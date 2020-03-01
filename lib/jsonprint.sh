@@ -448,3 +448,27 @@ json_foreach() {
   json_obj_close
   unset -v _iter_count _key _value
 }
+
+# Preliminary attempt at a function to automatically read input and build objects
+# do not use
+json_readloop() {
+  loop_iter=0
+  json_obj_open
+    while read -r _key _value; do
+      if (( loop_iter == 0 )); then
+        case $(json_gettype "${_value}") in
+          (int|float) json_num "${_key}" "${_value}" ;;
+          (bool)      json_bool "${_key}" "${_value}" ;;
+          (string)    json_str "${_key}" "${_value}" ;;
+        esac
+        (( loop_iter++ ))
+      else
+        case $(json_gettype "${_value}") in
+          (int|float) json_num_append "${_key}" "${_value}" ;;
+          (bool)      json_bool_append "${_key}" "${_value}" ;;
+          (string)    json_str_append "${_key}" "${_value}" ;;
+        esac
+      fi
+    done
+  json_obj_close
+}

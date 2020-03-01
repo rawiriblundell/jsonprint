@@ -19,12 +19,107 @@ you can then use its functions to format your outputs into a json structure.
 * Robust, stable, a smart idea
 * Something you should use if you can avoid it
 
-### Example
+### Examples
 
-For a basic example, let's take the formatting of `uname` and json-ify it.
-Because `uname` does not natively give out safely parsable output, we do have to
-make multiple calls to it, which is unfortunate and annoying, but relatively
-low impact.
+For a basic example, let's emit the load average of the system.  Consider this
+block of `bash` code, with comments removed:
+
+```
+include ../lib/jsonprint.sh
+
+get_epoch() {
+  if date -u '+%s' | grep '%s' >/dev/null 2>&1; then
+    printf -- '%s\n' "null"
+  else
+    date -u '+%s'
+  fi
+}
+
+get_uptime_output() {
+  uptime | sed -n -e 's/^.*load average: //p'
+}
+
+if [[ -r "/proc/loadavg" ]]; then
+  read -r one_min five_min fifteen_min _ _ < /proc/loadavg
+else
+  IFS=', ' read -r one_min five_min fifteen_min < <(get_uptime_output)
+fi
+
+json_open
+  json_obj_open load_average
+    json_num 1min "${one_min}"
+    json_num_append 5min "${five_min}"
+    json_num_append 15min "${fifteen_min}"
+    json_num_append utctime "$(get_epoch)"
+  json_obj_close
+json_close
+```
+
+*(Refer to `bin/json_loadavg` for full code with comments)*
+
+This is what the output looks like:
+
+```
+▓▒░$ bash json_loadavg
+{"load_average": {"1min": 0.6, "5min": 0.97, "15min": 1, "utctime": 1583097518}}
+```
+
+This is what the output looks like when pretty printed via `jq`, you can see
+how the indentations match up with how I've indented the code above:
+
+```
+▓▒░$ bash json_loadavg | jq -r '.'
+{
+  "load_average": {
+    "1min": 0.6,
+    "5min": 0.97,
+    "15min": 1,
+    "utctime": 1583097520
+  }
+}
+```
+
+*(**n.b** Indenting the function calls as shown isn't necessary, but it adds to readability)*
+
+`json_open()` simply prints `{`
+
+`json_obj_open` will open an object, in this case we have given it an argument,
+so it will generate `"load_average": {`
+
+We have previously gathered our statistics and put them into variables, so it's
+a simple matter of calling each function and feeding those variables in.
+
+We know that each value is going to be a number, so we call `json_num()` and give
+it our first key value pair for the one minute average, with the args `1min` and the
+variable `"${one_min}"`.  This will give the output:
+
+```
+"1min": 0.6
+```
+
+We know that the next key value pairs will be stacked onto this, so we call
+`json_num_append()` for those extra entries.  This function differs from `json_num`
+in that it prepends a comma and space, giving us:
+
+```
+"1min": 0.6, "5min": 0.97
+```
+
+Subsequent invocations of `json_num_append()` will continue to stack keyvals.
+
+*(**n.b** `json_num()` and `json_num_append()` will detect if the shell*
+*variables are blank and in that situation will output `null`.)*
+
+`json_obj_close()` simply prints `}`
+
+`json_close()` simply prints `}`
+
+---
+
+For a very slightly more advanced example, let's take the formatting of `uname` 
+and json-ify it.  Because `uname` does not natively give out safely parsable 
+output, we do have to make multiple calls to it, which is unfortunate and 
+annoying, but relatively low impact.
 
 Here's the code, without comments:
 
@@ -44,6 +139,8 @@ json_open
   json_obj_close
 json_close
 ```
+
+*(Refer to `bin/json_uname` for full code with comments)*
 
 This is what the output looks like when pretty-printed via `jq`, you can see
 how the indentations match up with how I've indented the code above:
@@ -79,7 +176,7 @@ the value will be a string, so we call `json_str()` with the args `nodename` and
 
 We know that subsequent key value pairs will be stacked onto this, 
 so we call `json_str_append()` for those extra entries.  This function differs
-from `json_str()` in that it prepends a comma, giving us
+from `json_str()` in that it prepends a comma and space, giving us
 
 ```
 "nodename": "minty", "os_kernel": "Linux"
@@ -93,8 +190,6 @@ That is to say:  If `uname -o` works, then generate e.g. `"os_name": "GNU/Linux"
 otherwise, if `uname -o` doesn't work, then don't do anything here.  This kind
 of idiom allows us to script portably, but to also throw in GNU-ish nice-to-haves
 when and where we decide it's appropriate.
-
-When all is said and done, we get an output that looks like this (line wrapping mine):
 
 More advanced examples are available in the `bin/` directory.
 
@@ -147,12 +242,13 @@ There's a number of problems here.
 * Backtick command substitution.  I'm damn near 40.  This crap was superseded
   by `$()` when I was soiling nappies.  Just stop it.
     - Unless you're writing SVR4 `sh` package scripts for Solaris packages
+* Unquoted variables.  `shellcheck` is going to have kittens!
 * Multiple avoidable calls to an external program
 * Because date/timestamps might be different, there's no guarantee that the
   filename will be at the suggested field.  I've seen an attempt at working around
   this with a double invocation of `rev` e.g. `ls -la $FILE | rev | cut -d '' -f1 | rev`
   ...or something similarly nonsensical
-* It's an unspoken golden rule of shell scripting:  Do not [parse ls](https://mywiki.wooledge.org/ParsingLs)
+* It's an unspoken golden rule of shell scripting:  Do not [parse ls](https://mywiki.wooledge.org/ParsingLs).
 
 A slightly saner approach to this example might look something more like
 
