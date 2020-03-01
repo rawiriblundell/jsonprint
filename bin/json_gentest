@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# A demonstration of verbosely constructing the example from
+# https://en.wikipedia.org/wiki/JSON#Data_types_and_syntax
+
+include() {
+  [ -r "${1?}" ] && . "${1}"
+}
+
+include ../lib/jsonprint.sh
+
+json_open
+  json_str firstName John
+  json_str_append lastName Smith
+  json_bool_append isAlive true
+  json_num_append age 27
+  json_comma
+  json_obj_open address
+    json_str streetAddress 21 2nd Street
+    json_str_append city New York
+    json_str_append state NY
+    json_str_append postalCode 10021-3100
+  json_obj_close --comma
+  json_arr_open phoneNumbers
+    json_obj_open
+      json_str type home
+      json_str_append number 212 555-1234
+    json_obj_append
+      json_str type office
+      json_str_append number 646 555-4567
+    json_obj_append
+      json_str type mobile
+      json_str_append number 123 456-7890
+    json_obj_close
+  json_arr_close --comma
+  json_arr_open children
+  json_arr_close
+  json_str_append spouse
+json_close

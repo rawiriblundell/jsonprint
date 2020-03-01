@@ -1,0 +1,185 @@
+#!/bin/bash
+
+# A simple demonstration of 'date' with json output
+# "%D Date in the format mm/dd/yy" is utterly moronic.  We won't do that.
+# %U, %V, %W, %u and %w I'm undecided about the hassle vs utility 
+
+# A simple aesthetic function to give another name for '.'
+# shellcheck disable=SC1090
+include() { . "${1}" || exit 1; }
+
+include ../lib/jsonprint.sh
+
+# Generate the date format that our while read loop consumes
+get_date_output() {
+  case "${1}" in
+    (-u|--utc)
+      date -u "+%a %A %b %B %j %Y %y %m %d %H %I %M %S %p %x %X %c"
+    ;;
+    (''|*)
+      date "+%a %A %b %B %j %Y %y %m %d %H %I %M %S %p %x %X %c"
+    ;;
+  esac
+}
+
+# A function to generate the ordinal suffix
+# e.g. 2 -> 2nd, where 'nd' is the ordinal suffix
+# This doesn't go overboard with input validation
+# See: /r/commandline/comments/8gjx36/linux_date_command_can_it_do_cardinals/
+# and: https://github.com/gromgit/dateh for more power!
+get_ordinal() {
+  local ord
+  case "${1:?No date number defined}" in
+    (01|21|31) ord="st";;
+    (02|22)    ord="nd";;
+    (03|23)    ord="rd";;
+    (*)        ord="th";;
+  esac
+  printf -- '%s' "${ord}"
+}
+
+# Function to get the timezone in numerical UTC offset format
+# This tests for GNU friendly '%z' and uses that if present
+# Otherwise it fails over to a best-guess POSIX method
+# With '-c' or '--comma' as an arg, output looks like '+13:00'
+# Without the arg, the comma is omitted i.e. '+1300'
+get_numeric_timezone() {
+  case "$(date "+%z" 2>&1)" in
+    ([+-][0-9]*)
+      case "${1}" in
+        (-c|--comma)
+          # Some versions of BSD 'date' have '%z' but not '%:z'
+          # So we replicate it like this:
+          date "+%z" | fold -w 3 | paste -sd ':' -
+        ;;
+        (''|*) date "+%z" ;;
+      esac
+    ;;
+    (*)
+      # Based on https://stackoverflow.com/a/41643684
+      local j H M T Z utc_j utc_H utc_M utc_T
+      while read -r j H M utc_j utc_H utc_M; do
+        # Remove leading zeros so that we don't invoke octal interpretation
+        j=$(( 10#${j} ))
+        H=$(( 10#${H} ))
+        M=$(( 10#${M} ))
+        utc_j=$(( 10#${utc_j} ))
+        utc_H=$(( 10#${utc_H} ))
+        utc_M=$(( 10#${utc_M} ))
+
+        # minutes in year: DAY/Y * 1440 min/d + H * 60 h/min + MIN
+        T=$(( j * 1440 + H * 60 + M ))
+        utc_T=$(( utc_j * 1440 + utc_H * 60 + utc_M ))
+
+        # TZ offset as hr*100 
+        Z=$(( ( T - utc_T ) * 100 / 60 )) 
+        # hours ($Z is hundredths of hours, so we remove the last two digits)
+        H="${Z%??}"
+
+        if (( H < -13 )); then
+          H=$(( H + 8712 ))      # UTC is a year ahead
+        elif (( H > 13 )); then
+          H=$(( H % 8736 - 24 )) # UTC is a year behind
+        fi
+        if (( H < -13 )); then
+          H=$(( H + 24 ))      # UTC is a day ahead of a leap year
+        elif (( H > 13 )); then
+          H=$(( H - 24 ))      # UTC is a day behind a leap year
+        fi
+
+        # hundredths of hours (to become minutes on the next line)
+        M=${Z#$H} 
+        (( M != 00 )) && M=$(( M * 60 / 100 ))
+
+        case "${1}" in
+          (-c|--comma) printf '%+03d:%02d' "${H}" "${M}" ;;
+          (''|*)       printf '%+03d%02d' "${H}" "${M}" ;;
+        esac
+      done < <(paste -d ' ' <(date "+%j %H %M") <(date -u "+%j %H %M"))
+    ;;
+  esac
+}
+
+# Set these variables for use in iso/rfc output formats
+z="$(get_numeric_timezone)"
+z_comma="$(get_numeric_timezone --comma)"
+
+# Test if 'date' supports epoch time
+case "$(date '+%s' 2>&1)" in
+  (*[0-9]*) epochtime=true ;;
+  (*)       epochtime=false ;;
+esac
+
+# Test if 'date' supports nanosecond time
+case "$(date '+%N' 2>&1)" in
+  (*[0-9]*) nanotime=true ;;
+  (*)       nanotime=false ;;
+esac
+
+json_open
+  json_obj_open datetime
+    # Let's output all the detail for our locale
+    json_obj_open "$(date '+%Z')"
+      while read -r a A b B j Y y m d H I M S p x X c; do
+        json_str locale_date "${x}"
+        json_str_append locale_time "${X}"
+        json_str_append locale_datetime "${c}"
+        json_str_append AM/PM "${p}"
+        json_str_append clock_12h "${I}:${M}:${S} ${p}"
+        json_str_append clock_24h "${H}:${M}:${S}"
+        json_str_append weekday_short "${a}"
+        json_str_append weekday "${A}"
+        json_str_append month_short "${b}"
+        json_str_append month "${B}"
+        json_str_append ordinal_suffix "$(get_ordinal "${d}")"
+        json_str_append iso-8601 "${Y}-${m}-${d}T${H}:${M}:${S}${z_comma}"
+        json_str_append rfc-email "${a}, ${d} ${b} ${Y} ${H}:${M}:${S} ${z}"
+        json_str_append rfc-3339 "${Y}-${m}-${d} ${H}:${M}:${S}${z}"
+        json_num_append numerical_day_of_year "${j}"
+        json_num_append numerical_year "${Y}"
+        json_num_append numerical_year_short "${y}"
+        json_num_append numerical_month "${m}"
+        json_num_append numerical_day "${d}"
+        json_num_append numerical_hour_24h "${H}"
+        json_num_append numerical_hour_12h "${I}"
+        json_num_append numerical_minute "${M}"
+        json_num_append numerical_second "${S}"
+        [[ "${nanotime}" = true ]] &&
+          json_num_append numerical_nanoseconds "$(date '+%N')"
+        [[ "${epochtime}" = true ]] &&
+          json_num_append numerical_epoch "$(date '+%s')"
+      done < <(get_date_output)
+    # And then let's output all the detail for UTC
+    json_obj_append UTC
+      while read -r a A b B j Y y m d H I M S p x X c; do
+        json_str locale_date "${x}"
+        json_str_append locale_time "${X}"
+        json_str_append locale_datetime "${c}"
+        json_str_append AM/PM "${p}"
+        json_str_append clock_12h "${I}:${M}:${S} ${p}"
+        json_str_append clock_24h "${H}:${M}:${S}"
+        json_str_append weekday_short "${a}"
+        json_str_append weekday "${A}"
+        json_str_append month_short "${b}"
+        json_str_append month "${B}"
+        json_str_append ordinal_suffix "$(get_ordinal "${d}")"
+        json_str_append iso-8601 "${Y}-${m}-${d}T${H}:${M}:${S}+00:00"
+        json_str_append rfc-email "${a}, ${d} ${b} ${Y} ${H}:${M}:${S} +0000"
+        json_str_append rfc-3339 "${Y}-${m}-${d} ${H}:${M}:${S}+0000"
+        json_num_append numerical_day_of_year "${j}"
+        json_num_append numerical_year "${Y}"
+        json_num_append numerical_year_short "${y}"
+        json_num_append numerical_month "${m}"
+        json_num_append numerical_day "${d}"
+        json_num_append numerical_hour_24h "${H}"
+        json_num_append numerical_hour_12h "${I}"
+        json_num_append numerical_minute "${M}"
+        json_num_append numerical_second "${S}"
+        [[ "${nanotime}" = true ]] &&
+          json_num_append numerical_nanoseconds "$(date '+%N')"
+        [[ "${epochtime}" = true ]] &&
+          json_num_append numerical_epoch "$(date '+%s')"
+      done < <(get_date_output --utc)
+    json_obj_close
+  json_obj_close
+json_close
