@@ -291,8 +291,41 @@ clear of `ls`.
 
 ### What about json's special characters?
 
+Sure.  So what you're getting at is edge cases like "newlines in a filename".
+
 `jsonprint.sh` provides a function, `json_str_escape()` which handles this.
-It is currently not plumbed in and only works when manually called.
+It is currently not plumbed in and only works when manually called.  The example
+script, `json_ls`, uses this function, and it's _mostly_ there:
+
+```
+▓▒░$ touch "$(printf "foo\n-rw-r--r-- 1 skeeto skeeto 0 Feb  6 15:49 bar")"
+▓▒░$ ls -la
+total 44
+drwxr-x--- 2 rawiri rawiri  258 Mar  2 22:58  ./
+drwxr-x--- 5 rawiri rawiri   72 Feb 29 14:50  ../
+-rw-r----- 1 rawiri rawiri    0 Mar  2 22:58 'foo'$'\n''-rw-r--r-- 1 skeeto skeeto 0 Feb  6 15:49 bar'
+```
+...
+```
+▓▒░$ bash json_ls | jq -r '.'
+{
+  "/home/rawiri/git/jsonprint/bin": [
+    {
+      "fileName": "foo\n-rw-r--r-- 1 skeeto skeeto 0 Feb  6 15:49 bar",
+      "fileOwner": "rawiri",
+      "fileGroup": "rawiri",
+      "fileMode": 640,
+      "sizeBytes": 0,
+      "fileModified": 1583143088,
+      "fileAccessed": 1583143088,
+      "fileType": "regular empty file",
+      "dereference": "foo$\n-rw-r--r-- 1 skeeto skeeto 0 Feb  6 15:49 bar"
+    },
+```
+
+*This example edge case was from a reddit discussion for `jc`, which is a*
+*similar project, just written in python.  I discovered it a few weeks after I* 
+*started this project.*
 
 ### What are the main problems with this, apart from everything else?
 
@@ -393,6 +426,13 @@ ensure that the variables are unset.
 
 All functions start with `json_`, even when this may seem weird.  I might change
 that standard in the future to something like `jprint_` or `printj_`.  Or not.
+
+Because I know that some people prefer certain orders of things, I have put in
+aliases for many of these functions e.g.
+
+`json_obj_append` has an alias, `json_append_obj`
+
+This is the case for all `_open`, `_close` and `_append` functions.
 
 ### json_vorhees()
 
@@ -673,6 +713,17 @@ This is the opposite approach to the `_append` functions.
 As per `json_bool()`, it just drops the `-c`/`--comma` options, and pre-pends a
 comma i.e. `, "key": value`.  It otherwise behaves exactly the same.
 
+
+### json_auto_append
+
+**Args:** (Required).  Two args: Key and Value.
+
+**Example:** `json_auto_append interface eth0`
+
+This function attempts to use `json_gettype()` to automatically determine how
+to address the value that is given to it.  It is currently untested, but in
+theory it should work just fine.
+
 ### json_from_dkvp()
 
 **NOTE: Work In Progress.  Do Not Use**
@@ -725,6 +776,52 @@ This object is structured in isolation.  If you want to append it, you might use
 `json_comma()` before invoking this function.
 
 There is no major input validation here, you must ensure that the input is sane.
+
+### json_readloop()
+
+This is a test function for reading input line-by-line and automatically
+figuring out how to address its inputs.  Untested.  Will likely change.
+
+Similar to `json_foreach()`, but it reads line by line rather than addressing
+a sequence of positional parameters...
+
+### json_timestamp()
+
+This function is intended as an alternative to `json_obj_close()`.  It is
+useful if you're presenting metrics that require some kind of timestamp, usually
+this would be for tracked series data and similar.
+
+Instead of calling `json_obj_close()`, you call `json_timestamp()` instead.
+It calls `json_obj_append()`, outputs its information, and then calls
+`json_obj_close()`.
+
+It outputs either of the following formats:
+
+```
+, "timestamp": {"utc_epoch": 1583137512}}}
+```
+
+Or
+
+```
+, "timestamp": {"utc_YYYYMMDDHHMMSS": 20200302100832}}}
+```
+
+In real life usage, it looks like this:
+
+```
+▓▒░$ bash json_loadavg | jq -r '.'
+{
+  "load_average": {
+    "1min": 2.64,
+    "5min": 2.22,
+    "15min": 2.02
+  },
+  "timestamp": {
+    "utc_epoch": 1583142468
+  }
+}
+```
 
 ## More resources
 

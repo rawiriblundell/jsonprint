@@ -24,10 +24,6 @@
 ################################################################################
 # Author's note: This is an exercise for my own amusement/education.
 # If it works well for you, fantastic!  If you have ideas, please submit them :)
-# If you need more power, check out:
-# https://github.com/jpmens/jo
-# https://github.com/Juniper/libxo
-# https://github.com/kellyjonbrazil/jc
 
 # Our variant of die()
 json_vorhees() {
@@ -375,6 +371,21 @@ json_bool_append() {
 
 alias json_append_bool='json_bool_append'
 
+# Attempt to automatically figure out how to address a key value pair
+# Untested, may change.
+json_auto_append() {
+  _key="${1}"
+  _value="${2}"
+  case $(json_gettype "${_value}") in
+    (int|float) json_num_append "${_key}" "${_value}" ;;
+    (bool)      json_bool_append "${_key}" "${_value}" ;;
+    (string)    json_str_append "${_key}" "${_value}" ;;
+  esac
+  unset -v _key _value
+}
+
+alias json_append_auto='json_auto_append'
+
 # This function takes a comma or equals delimited key-value pair input
 # and emits it in a way that can be used by e.g. json_str()
 # Example: a variable named 'line' that contains "Bytes: 22"
@@ -490,5 +501,16 @@ json_readloop() {
         esac
       fi
     done
+  json_obj_close
+}
+
+# A function to append an object with a timestamp
+# This attempts the epoch first, and fails over to YYYYMMDDHHMMSS
+json_timestamp() {
+  json_obj_append timestamp
+    case "$(date '+%s' 2>&1)" in
+      (*[0-9]*) json_num utc_epoch "$(date -u '+%s')" ;;
+      (*)       json_num utc_YYYYMMDDHHMMSS "$(date -u '+%Y%m%d%H%M%S')" ;;
+    esac
   json_obj_close
 }

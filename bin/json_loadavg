@@ -8,16 +8,6 @@ include() { . "${1}" || exit 1; }
 
 include ../lib/jsonprint.sh
 
-# A small function to either get the epoch from `date`, or to emit `null`
-# Not all versions of 'date' support '+%s'
-get_epoch() {
-  if date -u '+%s' | grep '%s' >/dev/null 2>&1; then
-    printf -- '%s\n' "null"
-  else
-    date -u '+%s'
-  fi
-}
-
 # A small function to pluck the load detail from the 'uptime' command
 # 'uptime' is fairly stable and seems to be relatively portable, but just in 
 # case we need to put any OS/Distro specific handling in, we do so here.
@@ -41,6 +31,5 @@ json_open
     json_num 1min "${one_min}"
     json_num_append 5min "${five_min}"
     json_num_append 15min "${fifteen_min}"
-    json_num_append utctime "$(get_epoch)"
-  json_obj_close
+  json_timestamp
 json_close
