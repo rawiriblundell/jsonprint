@@ -1,5 +1,5 @@
 # jsonprint.sh
-A shell function library to assist with formatting output into json
+A shell function library to assist with formatting output into json.
 
 ## Pre-emptive FAQ
 
@@ -9,8 +9,8 @@ This is, therefore, a *pre-emptive* FAQ where I guess what you'll ask.
 
 ### What is it?
 
-`jsonprint.sh` is a library of functions that you source into your shell scripts,
-you can then use its functions to format your outputs into a json structure.
+`jsonprint.sh` is a function library that you source into your shell scripts.
+You can then use its functions to format your outputs into a json structure.
 
 ### What isn't it?
 
@@ -79,7 +79,8 @@ how the indentations match up with how I've indented the code above:
 }
 ```
 
-*(**n.b** Indenting the function calls as shown isn't necessary, but it adds to readability)*
+*(**n.b** Indenting the function calls as shown isn't necessary,*
+* but it adds to readability)*
 
 `json_open()` simply prints `{`
 
@@ -89,17 +90,17 @@ so it will generate `"load_average": {`
 We have previously gathered our statistics and put them into variables, so it's
 a simple matter of calling each function and feeding those variables in.
 
-We know that each value is going to be a number, so we call `json_num()` and give
-it our first key value pair for the one minute average, with the args `1min` and the
-variable `"${one_min}"`.  This will give the output:
+We know each value is going to be a number, so we call `json_num()` and give
+it our first key value pair for the one minute average, with the key `1min` and
+the value `"${one_min}"`.  This will give the output:
 
 ```
 "1min": 0.6
 ```
 
 We know that the next key value pairs will be stacked onto this, so we call
-`json_num_append()` for those extra entries.  This function differs from `json_num`
-in that it prepends a comma and space, giving us:
+`json_num_append()` for those extra entries.  This function differs from 
+`json_num` in that it prepends a comma and space, giving us:
 
 ```
 "1min": 0.6, "5min": 0.97
@@ -174,9 +175,10 @@ the value will be a string, so we call `json_str()` with the args `nodename` and
 "nodename": "minty"
 ```
 
-We know that subsequent key value pairs will be stacked onto this, 
-so we call `json_str_append()` for those extra entries.  This function differs
-from `json_str()` in that it prepends a comma and space, giving us
+We know that subsequent key value pairs will be stacked onto this, and the 
+values will be strings, so we call `json_str_append()` for those extra entries.
+This  function differs from `json_str()` in that it prepends a comma and space, 
+giving us:
 
 ```
 "nodename": "minty", "os_kernel": "Linux"
@@ -186,10 +188,10 @@ Subsequent invocations of `json_str_append()` will continue to stack keyvals.
 
 Some versions of `uname` support options that may be nice to have, so we use
 idioms like `uname -o >/dev/null 2>&1 && json_str_append os_name "$(uname -o)"`
-That is to say:  If `uname -o` works, then generate e.g. `"os_name": "GNU/Linux"`,
-otherwise, if `uname -o` doesn't work, then don't do anything here.  This kind
-of idiom allows us to script portably, but to also throw in GNU-ish nice-to-haves
-when and where we decide it's appropriate.
+That is to say:  If `uname -o` works, then generate e.g. 
+`"os_name": "GNU/Linux"`, otherwise, if `uname -o` doesn't work, then don't do 
+anything here.  This kind of idiom allows us to script portably, but to also 
+throw in GNU-ish nice-to-haves when and where we decide it's appropriate.
 
 More advanced examples are available in the `bin/` directory.
 
@@ -236,7 +238,7 @@ There's a number of problems here.
     - Shell doesn't have strict scoping/namespacing
     - That said, UPPERCASE is, *de facto via convention*, the global scope
     - In other languages, you don't clobber the global scope
-    - We should adopt good habits and practices from other languages where possible
+    - We should adopt good habits/practices from other languages where possible
     - Ergo:  **Don't use UPPERCASE unless you know why you need to**
     - There are, annoyingly, exceptions to the rule.  Like `$http_proxy`
 * Backtick command substitution.  I'm damn near 40.  This crap was superseded
@@ -245,10 +247,12 @@ There's a number of problems here.
 * Unquoted variables.  `shellcheck` is going to have kittens!
 * Multiple avoidable calls to an external program
 * Because date/timestamps might be different, there's no guarantee that the
-  filename will be at the suggested field.  I've seen an attempt at working around
-  this with a double invocation of `rev` e.g. `ls -la $FILE | rev | cut -d '' -f1 | rev`
+  filename will be at the suggested field.  I've seen an attempt at working 
+  around this with a double invocation of `rev` e.g. 
+  `ls -la $FILE | rev | cut -d '' -f1 | rev`
   ...or something similarly nonsensical
-* It's an unspoken golden rule of shell scripting:  Do not [parse ls](https://mywiki.wooledge.org/ParsingLs).
+* It's an unspoken golden rule of shell scripting:
+  Do not [parse ls](https://mywiki.wooledge.org/ParsingLs).
 
 A slightly saner approach to this example might look something more like
 
@@ -307,8 +311,8 @@ If you ran this blindly through a formatting function, this might come out like:
 The issue is very subtle - there is a trailing comma on the last pair.  That's
 going to break things.
 
-To get around this, I've naturally tried out a number of approaches.  Perhaps the
-simplest is to use one of the append functions and a single-use variable to
+To get around this, I've naturally tried out a number of approaches.  Perhaps 
+the simplest is to use one of the append functions and a single-use variable to
 track how many times you've gone through a loop.  For example
 
 ```
@@ -370,12 +374,14 @@ After a full run through, we have:
 {"a": "b", "c": "d", "e": "f", "g": "h"}
 ```
 
-And for the most part this works, I just haven't thought of a cleaner way to handle this (yet?)
+And for the most part this works, I just haven't thought of a cleaner way to
+handle this (yet?)
 
 ### I'm looking at the code, why aren't you using local variables?
 
 Not all shells support the `local` keyword/scope.  So as a convention, I use
-underscore prepended variables and explicitly `unset` them at the end of each funcion.
+underscore prepended variables and explicitly `unset` them at the end of 
+each function.
 
 This means that the library itself is more readily portable, and if it's not 
 immediately portable, then it shouldn't be much effort to update it.
@@ -421,7 +427,7 @@ library was structured differently, but may still be of some use.
 **Example:** `json_require /proc/cpuinfo lscpu`
 
 If your script requires a file (or files) or a command (or commands), then you
-can use `json_require()` to check the existence of these required files/commands.
+can use `json_require()` to check the existence of these.
 
 Failure will emit a message like:
 
@@ -430,7 +436,7 @@ Failure will emit a message like:
 ```
 
 And the function will also invoke `exit 1`.  This means that you should use this
-basically immediately after sourcing the library, so that your script fails early.
+basically immediately after sourcing the library, so that your code fails early.
 
 ### json_gettype()
 
@@ -554,8 +560,8 @@ to the `_append` functions.
 
 **Example:** `json_obj_append jboss_memory_stats`
 
-This function appends an object to another object.  It emits the closing block for
-the previous object, the comma seperator, and then opens the new object.
+This function appends an object to another object.  It emits the closing block
+for the previous object, the comma seperator, and then opens the new object.
 
 If no argument is supplied, it simply outputs:
 
@@ -576,11 +582,12 @@ If an argument is supplied, it outputs:
 **Example:** `somecommand | json_str_escape`
 
 Some characters in json must be escaped.  A lot of advice at the better end of a
-google will center around using `perl` or `python` to do this.  If we assume that,
-then we may as well just use `perl` or `python` for everything else, right?!
+google will center around using `perl` or `python` to do this.  If we assume 
+that, then we may as well just use `perl` or `python` for everything else.
+Right?!
 
-So this function converts its stdin into a single column of octals.  Then it finds
-any undesirable octals and prints an escaped replacement.
+So this function converts its stdin into a single column of octals.  Then it
+finds any undesirable octals and prints an escaped replacement.
 
 This might be computationally expensive, so try to avoid it if you can.
 
@@ -591,7 +598,7 @@ literally 'null', we return `null` (unquoted)
 
 **Options:** `-c` or `--comma`.  When selected, this emits a trailing comma.
 
-**Example:** `json_str CPU_Model "${cpu_model}`
+**Example:** `json_str CPU_Model "${cpu_model}"`
 
 This function formats a string key value pair, in the format: `"key": "value"`.
 String values are quoted.
@@ -610,7 +617,7 @@ comma i.e. `, "key": "value"`.  It otherwise behaves exactly the same.
 
 **Options:** `-c` or `--comma`.  When selected, this emits a trailing comma.
 
-**Example:** `json_num Memory "${memory_value}`
+**Example:** `json_num Memory "${memory_value}"`
 
 This function formats a number (int or float) key value pair, in the format: 
 `"key": value`.  Numerical values are unquoted.
@@ -620,7 +627,8 @@ an exception will be thrown and the script will exit via `json_vorhees()`.
 
 Leading zeroes are not allowed in json as they can be interpreted as octal, so
 this function strips them as well.  In order to handle this and floats, we use
-`printf`'s float format rather than the signed decimal format specified in the json spec.
+`printf`'s float format rather than the signed decimal format specified in the 
+json spec.
 
 If used with `-c` or `--comma`, it prints `"key": value,`.
 This is the opposite approach to the `_append` functions.
@@ -642,7 +650,8 @@ This function formats a boolean true/false key value pair, in the format:
 `"key": value`.  Boolean values are unquoted.
 
 The value is validated to ensure that it is one of a recognised set of options.
-If it isn't, an exception will be thrown and the script will exit via `json_vorhees()`.
+If it isn't, an exception will be thrown and the script will exit
+via `json_vorhees()`.
 
 The list is as follows:
 
@@ -653,8 +662,8 @@ The list is as follows:
 * true
 * false
 
-These are recognised in a case-insensitive manner, and converted to their respective
-`true` or `false` forms in lowercase.
+These are recognised in a case-insensitive manner, and converted to their
+respective `true` or `false` forms in lowercase.
 
 If used with `-c` or `--comma`, it prints `"key": value,`.
 This is the opposite approach to the `_append` functions.
@@ -686,7 +695,8 @@ into a json-friendly visage.
 
 **Args:** (Required).  Any number of key value pairs all in one line.
 
-**Options:** `-n` or `--name`.  When selected, this gives the surrounding object a name.
+**Options:** `-n` or `--name`.  When selected, this gives the surrounding 
+             object a name.
 
 **Example:** `json_foreach key1 value1 key2 value2 .. keyN valueN`
 
@@ -706,8 +716,8 @@ If the object name option is not used, then the object simply isn't named.
 The key is stripped of any trailing instance of `:` or `=` and both the key
 and value are trimmed of whitespace either side of them.
 
-The value type is then determined via `json_gettype()` and the appropriate output
-function selected and used.
+The value type is then determined via `json_gettype()` and the appropriate
+output function selected and used.
 
 Finally, the object is closed.
 

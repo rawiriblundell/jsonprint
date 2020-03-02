@@ -158,6 +158,8 @@ json_arr_open() {
   esac
 }
 
+alias json_open_arr='json_arr_open'
+
 # Close an array block
 # With '-c' or -'--comma', we return '],'
 # Without either arg, we return ']'
@@ -170,6 +172,8 @@ json_arr_close() {
   unset -v _comma
 }
 
+alias json_close_arr='json_arr_close'
+
 # Append an array to another
 # If an arg is provided, we return '],"name": ['
 # Otherwise, we simply return '],['
@@ -180,6 +184,8 @@ json_arr_append() {
   esac
 }
 
+alias json_append_arr='json_arr_append'
+
 # Open an object block
 # If an arg is provided, we return '"name": {'
 # Without any arg, we simply return '{'
@@ -189,6 +195,8 @@ json_obj_open() {
     (*)   printf -- '"%s": {' "${*}" ;;
   esac
 }
+
+alias json_open_obj='json_obj_open'
 
 # Close an object block
 # With '-c' or -'--comma', we return '},'
@@ -201,6 +209,8 @@ json_obj_close() {
   esac 
 }
 
+alias json_close_obj='json_obj_close'
+
 # Append an object to another
 json_obj_append() {
   case "${1}" in
@@ -208,6 +218,8 @@ json_obj_append() {
     (*)   printf -- '}, "%s": {' "${*}" ;;
   esac
 }
+
+alias json_append_obj='json_obj_append'
 
 # A function to escape characters that must be escaped in JSON
 # This converts stdin into a single column of octals
@@ -240,6 +252,8 @@ json_str_escape() {
     done
 }
 
+alias json_escape_str='json_str_escape'
+
 # Format a string keypair
 # With '-c' or '--comma', we return '"key": "value",'
 # Without either arg, we return '"key": "value"'
@@ -268,6 +282,8 @@ json_str_append() {
   esac
   unset -v _key
 }
+
+alias json_append_str='json_str_append'
 
 # Format a number keypair using printf float notation.  Numbers are unquoted.
 # With '-c' or '--comma', we return '"key": value,'
@@ -313,6 +329,8 @@ json_num_append() {
   unset -v _key
 }
 
+alias json_append_num='json_num_append'
+
 # Format a boolean true/false keypair.  Booleans are unquoted.
 # With '-c' or '--comma', we return '"key": value,'
 # Without either arg, we return '"key": value'
@@ -354,6 +372,8 @@ json_bool_append() {
   printf -- ', "%s": %s' "${_key}" "${_bool}"
   unset -v _key _bool
 }
+
+alias json_append_bool='json_bool_append'
 
 # This function takes a comma or equals delimited key-value pair input
 # and emits it in a way that can be used by e.g. json_str()
