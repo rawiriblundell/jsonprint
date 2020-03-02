@@ -80,7 +80,7 @@ how the indentations match up with how I've indented the code above:
 ```
 
 *(**n.b** Indenting the function calls as shown isn't necessary,*
-* but it adds to readability)*
+*but it adds to readability)*
 
 `json_open()` simply prints `{`
 
@@ -400,7 +400,7 @@ Meaning a stacked output of:
 ```
 
 There is no trailing comma, so it can be safely closed at any point.  And as we 
-loop through the input, we simply stack our objects this way.
+loop through the input, we simply stack our key value pairs this way.
 After a full run through, we have:
 
 ```
