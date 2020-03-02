@@ -41,13 +41,13 @@ get_ordinal() {
 # Function to get the timezone in numerical UTC offset format
 # This tests for GNU friendly '%z' and uses that if present
 # Otherwise it fails over to a best-guess POSIX method
-# With '-c' or '--comma' as an arg, output looks like '+13:00'
-# Without the arg, the comma is omitted i.e. '+1300'
+# With '-c' or '--colon' as an arg, output looks like '+13:00'
+# Without the arg, the colon is omitted i.e. '+1300'
 get_numeric_timezone() {
   case "$(date "+%z" 2>&1)" in
     ([+-][0-9]*)
       case "${1}" in
-        (-c|--comma)
+        (-c|--colon)
           # Some versions of BSD 'date' have '%z' but not '%:z'
           # So we replicate it like this:
           date "+%z" | fold -w 3 | paste -sd ':' -
@@ -92,7 +92,7 @@ get_numeric_timezone() {
         (( M != 00 )) && M=$(( M * 60 / 100 ))
 
         case "${1}" in
-          (-c|--comma) printf '%+03d:%02d' "${H}" "${M}" ;;
+          (-c|--colon) printf '%+03d:%02d' "${H}" "${M}" ;;
           (''|*)       printf '%+03d%02d' "${H}" "${M}" ;;
         esac
       done < <(paste -d ' ' <(date "+%j %H %M") <(date -u "+%j %H %M"))
@@ -102,7 +102,7 @@ get_numeric_timezone() {
 
 # Set these variables for use in iso/rfc output formats
 z="$(get_numeric_timezone)"
-z_comma="$(get_numeric_timezone --comma)"
+z_colon="$(get_numeric_timezone --colon)"
 
 # Test if 'date' supports epoch time
 case "$(date '+%s' 2>&1)" in
@@ -132,7 +132,7 @@ json_open
         json_str_append month_short "${b}"
         json_str_append month "${B}"
         json_str_append ordinal_suffix "$(get_ordinal "${d}")"
-        json_str_append iso-8601 "${Y}-${m}-${d}T${H}:${M}:${S}${z_comma}"
+        json_str_append iso-8601 "${Y}-${m}-${d}T${H}:${M}:${S}${z_colon}"
         json_str_append rfc-email "${a}, ${d} ${b} ${Y} ${H}:${M}:${S} ${z}"
         json_str_append rfc-3339 "${Y}-${m}-${d} ${H}:${M}:${S}${z}"
         json_num_append numerical_day_of_year "${j}"
