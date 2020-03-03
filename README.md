@@ -84,7 +84,7 @@ how the indentations match up with how I've indented the code above:
 
 `json_open()` simply prints `{`
 
-`json_obj_open` will open an object, in this case we have given it an argument,
+`json_obj_open()` will open an object, in this case we have given it an argument,
 so it will generate `"load_average": {`
 
 We have previously gathered our statistics and put them into variables, so it's
@@ -100,7 +100,7 @@ the value `"${one_min}"`.  This will give the output:
 
 We know that the next key value pairs will be stacked onto this, so we call
 `json_num_append()` for those extra entries.  This function differs from 
-`json_num` in that it prepends a comma and space, giving us:
+`json_num()` in that it prepends a comma and space, giving us:
 
 ```
 "1min": 0.6, "5min": 0.97
@@ -164,7 +164,7 @@ how the indentations match up with how I've indented the code above:
 
 `json_open()` simply prints `{`, and likewise, `json_close()` simply prints `}`
 
-`json_obj_open` will open an object, in this case we have given it an argument,
+`json_obj_open()` will open an object, in this case we have given it an argument,
 so it will generate `"uname": {`
 
 We have selected the nodename to be our first key value pair, and we know that
@@ -207,10 +207,20 @@ There's also the wee issue of very-lightweight containers where the likes of
 
 You know what will *always* be there?  A POSIX compliant shell.
 
+Almost always, [some variant of `ksh` is present.](https://www.in-ulm.de/~mascheck/various/shells/)
+
 While this project is *really* for my own amusement, there are, for better or
 worse, practical applications.  Perhaps you've got some small monitoring script
 that you want to output in json format, but firing up a `python` instance is
 really overkill.  Who knows?
+
+### [insert different face here] But... but... my 'real' language!
+
+Yeah, I get it.  You might like to take a look at the very promising [oil shell.](http://www.oilshell.org/)
+
+And read some of the [robust discussions](https://news.ycombinator.com/item?id=16154438) around it.
+
+Then give it your time and attention.
 
 ### Why would you want to deal with json in shell at all?  That's nuts!
 
@@ -289,13 +299,16 @@ In a json structure, these problems go away somewhat e.g:
 And the greatest part?  We can build that structure using `stat`, and stay well
 clear of `ls`.
 
+Why *wouldn't* you want that kind of improvement for shell scripting?
+
 ### What about json's special characters?
 
 Sure.  So what you're getting at is edge cases like "newlines in a filename".
 
 `jsonprint.sh` provides a function, `json_str_escape()` which handles this.
-It is currently not plumbed in and only works when manually called.  The example
-script, `json_ls`, uses this function, and it's _mostly_ there:
+It is currently not plumbed in to any other function and only works when 
+manually called.  The example script, `json_ls`, uses this function, and it's 
+_mostly_ there:
 
 ```
 ▓▒░$ touch "$(printf "foo\n-rw-r--r-- 1 skeeto skeeto 0 Feb  6 15:49 bar")"
@@ -327,7 +340,9 @@ drwxr-x--- 5 rawiri rawiri   72 Feb 29 14:50  ../
 *similar project, just written in python.  I discovered it a few weeks after I* 
 *started this project.*
 
-### What are the main problems with this, apart from everything else?
+Further down this page is a description about how this function works.
+
+### What are the main problems with this, apart from, you know, everything else?
 
 Apart from everything else?  Right now, the main gotcha is handling the logic
 around an unknown number of inputs when looping.
@@ -362,7 +377,7 @@ json_obj_open
 json_obj_close
 ```
 
-If we step through this, we open an object with `json_obj_open`, which produces:
+If we step through this, we open an object with `json_obj_open()`, which produces:
 
 ```
 {
@@ -370,7 +385,7 @@ If we step through this, we open an object with `json_obj_open`, which produces:
 
 Next, we read into `_key` and `_value`, then test whether `loop_iter` is 0.  
 If it's 0, then we're on our very first run through the loop, and so we need to
-use `json_str()`.  This, combined with `json_obj_open` gives us:
+use `json_str()`.  This, combined with `json_obj_open()` gives us:
 
 ```
 {"a": "b"
@@ -378,14 +393,14 @@ use `json_str()`.  This, combined with `json_obj_open` gives us:
 
 Then we iterate `loop_iter` up by one, making it equal to `1`.
 
-If that's the only object to be generated, then the loop finishes, there's no
-trailing comma, and all is well.  `json_obj_close` is called, and we get:
+If that's the only keypair to be generated, then the loop finishes, there's no
+trailing comma, and all is well.  `json_obj_close()` is called, and we get:
 
 ```
 {"a": "b"}
 ```
 
-If there's more objects to be generated, because `loop_iter` is now `1`, we 
+If there's more keypairs to be generated, because `loop_iter` is now `1`, we 
 switch over to `json_str_append()`.  So the next line of input would be 
 generated like (note the preceding comma and space):
 
@@ -430,7 +445,7 @@ that standard in the future to something like `jprint_` or `printj_`.  Or not.
 Because I know that some people prefer certain orders of things, I have put in
 aliases for many of these functions e.g.
 
-`json_obj_append` has an alias, `json_append_obj`
+`json_obj_append()` has an alias, `json_append_obj`
 
 This is the case for all `_open`, `_close` and `_append` functions.
 
@@ -477,6 +492,9 @@ Failure will emit a message like:
 
 And the function will also invoke `exit 1`.  This means that you should use this
 basically immediately after sourcing the library, so that your code fails early.
+
+This obviously cannot test for a particular version or type of a command, but
+that might be nice e.g. `json_require gnu-tar`
 
 ### json_gettype()
 
@@ -539,7 +557,7 @@ If an argument is supplied, it outputs:
 
 **Options:** `-c` or `--comma`.  When selected, this emits a trailing comma.
 
-The opposite of `json_arr_open`.  It prints: `]`.
+The opposite of `json_arr_open()`.  It prints: `]`.
 
 If used with `-c` or `--comma`, it prints `],`.  This is the opposite approach
 to the `_append` functions.
@@ -589,7 +607,7 @@ If an argument is supplied, it outputs:
 
 **Options:** `-c` or `--comma`.  When selected, this emits a trailing comma.
 
-The opposite of `json_obj_open`.  It prints: `}`.
+The opposite of `json_obj_open()`.  It prints: `}`.
 
 If used with `-c` or `--comma`, it prints `},`.  This is the opposite approach
 to the `_append` functions.
