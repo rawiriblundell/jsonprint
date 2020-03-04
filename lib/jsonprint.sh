@@ -175,6 +175,12 @@ alias json_close_arr='json_arr_close'
 # Otherwise, we simply return '],['
 json_arr_append() {
   case "${1}" in
+    (-n|--no-bracket)
+      case "${2}" in
+        ('')  printf -- '%s' ",[" ;;
+        (*)   shift 1; printf -- ', "%s": [' "${*}" ;;
+      esac
+    ;;
     ('')  printf -- '%s' "],[" ;;
     (*)   printf -- '], "%s": [' "${*}" ;;
   esac
@@ -210,6 +216,12 @@ alias json_close_obj='json_obj_close'
 # Append an object to another
 json_obj_append() {
   case "${1}" in
+    (-n|--no-bracket)
+      case "${2}" in
+        ('')  printf -- '%s' ",{" ;;
+        (*)   shift 1; printf -- ', "%s": {' "${*}" ;;
+      esac
+    ;;
     ('')  printf -- '%s' "},{" ;;
     (*)   printf -- '}, "%s": {' "${*}" ;;
   esac
@@ -292,15 +304,18 @@ json_num() {
     (*)          _comma="" ;;
   esac
   case "${2}" in
+    (''|null)
+      printf -- '"%s": %s%s' "${1:-null}" "null" "${_comma}"
+    ;;
     (*[!0-9.]*)
       json_vorhees "Value '${2}' not a number"
     ;;
     (*[0-9][.][0-9]*)
-      printf -- '"%s": %.2f%s' "${1:-null}" "${2:-null}" "${_comma}"
+      printf -- '"%s": %.2f%s' "${1:-null}" "${2}" "${_comma}"
     ;;
     (*)
       # We strip any leading zeros as json doesn't support them (i.e. octal)
-      printf -- '"%s": %.0f%s' "${1:-null}" "${2:-null}" "${_comma}"
+      printf -- '"%s": %.0f%s' "${1:-null}" "${2}" "${_comma}"
     ;;
   esac
   unset -v _comma
@@ -312,14 +327,17 @@ json_num() {
 json_num_append() {
   _key="${1:-null}"
   case "${2}" in
+    (''|null)
+      printf -- ', "%s": %s' "${_key}" "null"
+    ;;
     (*[!0-9.]*)
       json_vorhees "Value '${2}' not a number"
     ;;
     (*[0-9][.][0-9]*)
-      printf -- ', "%s": %.2f' "${_key}" "${2:-null}"
+      printf -- ', "%s": %.2f' "${_key}" "${2}"
     ;;
     (*)
-      printf -- ', "%s": %.0f' "${_key}" "${2:-null}"
+      printf -- ', "%s": %.0f' "${_key}" "${2}"
     ;;
   esac
   unset -v _key
@@ -507,7 +525,7 @@ json_readloop() {
 # A function to append an object with a timestamp
 # This attempts the epoch first, and fails over to YYYYMMDDHHMMSS
 json_timestamp() {
-  json_obj_append timestamp
+  json_obj_append --no-bracket timestamp
     case "$(date '+%s' 2>&1)" in
       (*[0-9]*) json_num utc_epoch "$(date -u '+%s')" ;;
       (*)       json_num utc_YYYYMMDDHHMMSS "$(date -u '+%Y%m%d%H%M%S')" ;;

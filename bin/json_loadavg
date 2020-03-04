@@ -31,5 +31,6 @@ json_open
     json_num 1min "${one_min}"
     json_num_append 5min "${five_min}"
     json_num_append 15min "${fifteen_min}"
+  json_obj_close
   json_timestamp
 json_close
