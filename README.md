@@ -1,5 +1,5 @@
 # jsonprint.sh
-A shell function library to assist with formatting output into json.
+A shell function library to assist with formatting shell script output in json.
 
 ## Pre-emptive FAQ
 
@@ -18,6 +18,16 @@ You can then use its functions to format your outputs into a json structure.
 * A tool that is full of input validation and hand-holding
 * Robust, stable, a smart idea
 * Something you should use if you can avoid it
+
+### Why is it?
+
+For a while I have been wondering about what various UNIX utilities would look
+like if they had some kind of `--json` option, which could remove some degree of
+fragility from shell scripting if paired up with something like `jq`.
+
+I know that this won't exactly take off and be a thing, but one afternoon, 
+for my own amusement, I started writing a few functions.  And it wound up being 
+a lot easier than I expected to both curate and use.  And so here we are.
 
 ### Examples
 
@@ -55,7 +65,7 @@ json_open
 json_close
 ```
 
-*(Refer to `bin/json_loadavg` for full code with comments)*
+*(Refer to `bin/json_loadavg` for latest full code with comments)*
 
 This is what the output looks like:
 
@@ -141,7 +151,7 @@ json_open
 json_close
 ```
 
-*(Refer to `bin/json_uname` for full code with comments)*
+*(Refer to `bin/json_uname` for latest full code with comments)*
 
 This is what the output looks like when pretty-printed via `jq`, you can see
 how the indentations match up with how I've indented the code above:
@@ -218,14 +228,15 @@ really overkill.  Who knows?
 
 Yeah, I get it.  You might like to take a look at the very promising [oil shell.](http://www.oilshell.org/)
 
-And read some of the [robust discussions](https://news.ycombinator.com/item?id=16154438) around it.
+And read some of the [robust](https://news.ycombinator.com/item?id=16154438)
+[discussions](https://news.ycombinator.com/item?id=22150603) around it.
 
 Then give it your time and attention.
 
 ### Why would you want to deal with json in shell at all?  That's nuts!
 
-I agree, it is nuts.  Mostly for interactive use where throwing glue into
-streams is fine.  But for shell scripting, you really want as much
+I agree, it is a bit nuts.  Mostly for interactive use where throwing glue into
+streams is fine.  But for shell scripting itself, you really want as much
 robustness as you can get your hands on.
 
 Consider this:  Experienced practitioners of the Unix shell are familiar
@@ -246,14 +257,14 @@ There's a number of problems here.
 
 * UPPERCASE variables.  For Kildall's sake, just stop it.
     - Shell doesn't have strict scoping/namespacing
-    - That said, UPPERCASE is, *de facto via convention*, the global scope
-    - In other languages, you don't clobber the global scope
+    - That said, UPPERCASE is, *de facto via convention*, the "global" scope
+    - In other languages, clobbering the global scope is _strongly_ discouraged
     - We should adopt good habits/practices from other languages where possible
     - Ergo:  **Don't use UPPERCASE unless you know why you need to**
-    - There are, annoyingly, exceptions to the rule.  Like `$http_proxy`
+    - _There are, annoyingly, exceptions to the rule.  Like `$http_proxy`_
 * Backtick command substitution.  I'm damn near 40.  This crap was superseded
   by `$()` when I was soiling nappies.  Just stop it.
-    - Unless you're writing SVR4 `sh` package scripts for Solaris packages
+    - Unless you're writing SVR4 `sh` package scripts for Solaris packages.  Ugh.
 * Unquoted variables.  `shellcheck` is going to have kittens!
 * Multiple avoidable calls to an external program
 * Because date/timestamps might be different, there's no guarantee that the
@@ -336,11 +347,60 @@ drwxr-x--- 5 rawiri rawiri   72 Feb 29 14:50  ../
     },
 ```
 
-*This example edge case was from a reddit discussion for `jc`, which is a*
+*(This example edge case was from a reddit discussion for `jc`, which is a*
 *similar project, just written in python.  I discovered it a few weeks after I* 
-*started this project.*
+*started this project.)*
 
 Further down this page is a description about how this function works.
+
+### How about spaces in key names?
+
+Yeah, this is where shell bites us in the ass a bit.
+
+For the sake of portability and simplicity, these functions work directly on
+their positional parameters, and we don't depend on `getopt` or `getopts`.
+
+While I _could_ implement something like e.g.
+
+```
+json_str -k lots of words here -v somevalue
+```
+
+That would be more complicated than it needs to be.
+
+Until something more elegant becomes obvious, for the moment, you can use
+something like this:
+
+```
+json_num "\"${key}\"" "${value}"
+```
+
+This will deliver `${key}` with literal double-quotes, which are stripped by the
+functions.  E.g this line from `vmstat -s`:
+
+```
+15375000 K total memory
+```
+
+Via a little juggling and then fed into `json_num()` as above, becomes this:
+
+```
+"K total memory": 15375000,
+```
+
+Or you can sanitise your key names - swap spaces for underscores for example.
+
+If you _don't_ put in those literal double quotes, the function will essentially
+work like:
+
+```
+json_num K total memory 15375000
+
+$1=K
+$2=total
+
+I'm validating my inputs, and "total" is not a number, it's exception time...
+```
 
 ### What are the main problems with this, apart from, you know, everything else?
 
@@ -385,7 +445,8 @@ If we step through this, we open an object with `json_obj_open()`, which produce
 
 Next, we read into `_key` and `_value`, then test whether `loop_iter` is 0.  
 If it's 0, then we're on our very first run through the loop, and so we need to
-use `json_str()`.  This, combined with `json_obj_open()` gives us:
+use `json_str()` (because the value `b` is a string, duh).  This, combined with
+`json_obj_open()` gives us:
 
 ```
 {"a": "b"
@@ -429,13 +490,15 @@ handle this (yet?)
 
 Not all shells support the `local` keyword/scope.  So as a convention, I use
 underscore prepended variables and explicitly `unset` them at the end of 
-each function.
+each function.  Or I should be doing that.
 
 This means that the library itself is more readily portable, and if it's not 
-immediately portable, then it shouldn't be much effort to update it.
+immediately portable to a certain bourne-family shell, then it shouldn't be much
+effort to update it.
 
 The downside is that if a function exits mid-flight, there's no trapping to
-ensure that the variables are unset.
+ensure that the variables are unset.  But if this happens, we probably have a
+bigger issue to investigate.
 
 ## List of Functions
 
@@ -566,6 +629,9 @@ to the `_append` functions.
 
 **Args:** (Optional).  One string.
 
+**Options**: `-n` or `--no-bracket`.
+              When selected, this omits the leading bracket.
+
 **Example:** `json_arr_append jboss_application_stats`
 
 This function appends an array to another array.  It emits the closing block for
@@ -582,6 +648,15 @@ If an argument is supplied, it outputs:
 ```
 ], "arg": [
 ```
+
+If `-n` or `--no-bracket` is specified, the leading bracket is omittied i.e.
+the output becomes either:
+
+`,[`
+
+or
+
+`, "arg": [`
 
 ### json_obj_open()
 
@@ -616,6 +691,9 @@ to the `_append` functions.
 
 **Args:** (Optional).  One string.
 
+**Options**: `-n` or `--no-bracket`.
+              When selected, this omits the leading bracket.
+
 **Example:** `json_obj_append jboss_memory_stats`
 
 This function appends an object to another object.  It emits the closing block
@@ -633,6 +711,15 @@ If an argument is supplied, it outputs:
 }, "arg": {
 ```
 
+If `-n` or `--no-bracket` is specified, the leading bracket is omittied i.e.
+the output becomes either:
+
+`,{`
+
+or
+
+`, "arg": {`
+
 ### json_str_escape()
 
 **Args:** (None).  This functions reads stdin from a pipe.
@@ -647,7 +734,8 @@ Right?!
 So this function converts its stdin into a single column of octals.  Then it
 finds any undesirable octals and prints an escaped replacement.
 
-This might be computationally expensive, so try to avoid it if you can.
+This might be computationally expensive, so try to avoid it if you can.  I have
+not undertaken any performance testing, so OTOH it may well be reasonable.
 
 ### json_str()
 
@@ -805,24 +893,28 @@ a sequence of positional parameters...
 
 ### json_timestamp()
 
-This function is intended as an alternative to `json_obj_close()`.  It is
-useful if you're presenting metrics that require some kind of timestamp, usually
-this would be for tracked series data and similar.
+This function is intended for situations where timestamping an object may be
+required or useful.  For example: you're presenting metrics that require some 
+kind of timestamp, usually this would be for tracked series data and similar.
+Or you're outputting data that needs a timestamp to compare to - a file mtime
+(in epoch format) vs the current epoch, for example.
 
-Instead of calling `json_obj_close()`, you call `json_timestamp()` instead.
-It calls `json_obj_append()`, outputs its information, and then calls
-`json_obj_close()`.
+This is a way of expressing "these are the facts _as at_ time index xyz"
+
+It calls `json_obj_append() --no-brackets`, so it must be run after a close
+function like `json_obj_close` or `json_arr_close`.  It then outputs its
+information, and then calls `json_obj_close()`.
 
 It outputs either of the following formats:
 
 ```
-, "timestamp": {"utc_epoch": 1583137512}}}
+, "timestamp": {"utc_epoch": 1583137512}
 ```
 
-Or
+Or, for systems that don't support `date +%s`:
 
 ```
-, "timestamp": {"utc_YYYYMMDDHHMMSS": 20200302100832}}}
+, "timestamp": {"utc_YYYYMMDDHHMMSS": 20200302100832}
 ```
 
 In real life usage, it looks like this:
