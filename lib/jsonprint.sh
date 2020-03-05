@@ -523,8 +523,28 @@ json_foreach() {
 # do not use
 json_readloop() {
   loop_iter=0
-  json_obj_open
+    case "${1}" in
+      (-n|--name) json_obj_open "${2}"; shift 2 ;;
+      (*)         json_obj_open ;;
+    esac
     while read -r _key _value; do
+      # Tidy up our key value variables.
+      # Start by removing any instances of ":" or "=" from the key
+      _key="${_key%%:*}"
+      _key="${_key%%=*}"
+
+      # Remove any trailing whitespace from 'key'
+      _key="${_key%"${_key##*[![:space:]]}"}"
+
+      _key="${_key%\"}"
+      _key="${_key#\"}"
+
+      # Remove any leading whitespace from 'value'
+      _value="${_value#"${_value%%[![:space:]]*}"}"
+
+      # Remove any trailing whitespace from 'value'
+      _value="${_value%"${_value##*[![:space:]]}"}"
+
       if (( loop_iter == 0 )); then
         case $(json_gettype "${_value}") in
           (int|float) json_num "${_key}" "${_value}" ;;
@@ -539,8 +559,9 @@ json_readloop() {
           (string)    json_str_append "${_key}" "${_value}" ;;
         esac
       fi
-    done
+    done < "${1:-/dev/stdin}"
   json_obj_close
+  unset -v loop_iter
 }
 
 # A function to append an object with a timestamp
