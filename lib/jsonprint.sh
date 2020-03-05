@@ -272,6 +272,8 @@ json_str() {
     (*)          _comma="" ;;
   esac
   _key="${1:-null}"
+  _key="${_key%\"}"
+  _key="${_key#\"}" 
   case "${2}" in
     (null|'') printf -- '"%s": %s%s' "${_key}" "null" "${_comma}" ;;
     (*)       shift 1; printf -- '"%s": "%s"%s' "${_key}" "${*}" "${_comma}" ;;
@@ -284,6 +286,8 @@ json_str() {
 # If the value is blank or literally 'null', we return 'null' unquoted
 json_str_append() {
   _key="${1:-null}"
+  _key="${_key%\"}"
+  _key="${_key#\"}" 
   case "${2}" in
     (null|'') printf -- ', "%s": %s' "${_key}" "null" ;;
     (*)       shift; printf -- ', "%s": "%s"' "${_key}" "${*}" ;;
@@ -303,19 +307,22 @@ json_num() {
     (-c|--comma) shift 1; _comma="," ;;
     (*)          _comma="" ;;
   esac
+  _key="${1:-null}"
+  _key="${_key%\"}"
+  _key="${_key#\"}"  
   case "${2}" in
     (''|null)
-      printf -- '"%s": %s%s' "${1:-null}" "null" "${_comma}"
+      printf -- '"%s": %s%s' "${_key}" "null" "${_comma}"
     ;;
     (*[!0-9.]*)
       json_vorhees "Value '${2}' not a number"
     ;;
     (*[0-9][.][0-9]*)
-      printf -- '"%s": %.2f%s' "${1:-null}" "${2}" "${_comma}"
+      printf -- '"%s": %.2f%s' "${_key}" "${2}" "${_comma}"
     ;;
     (*)
       # We strip any leading zeros as json doesn't support them (i.e. octal)
-      printf -- '"%s": %.0f%s' "${1:-null}" "${2}" "${_comma}"
+      printf -- '"%s": %.0f%s' "${_key}" "${2}" "${_comma}"
     ;;
   esac
   unset -v _comma
@@ -326,6 +333,8 @@ json_num() {
 # If the value is blank or literally 'null', we return 'null' unquoted
 json_num_append() {
   _key="${1:-null}"
+  _key="${_key%\"}"
+  _key="${_key#\"}"
   case "${2}" in
     (''|null)
       printf -- ', "%s": %s' "${_key}" "null"
@@ -355,6 +364,9 @@ json_bool() {
     (-c|--comma) shift 1; _comma="," ;;
     (*)          _comma="" ;;
   esac
+  _key="${1:-null}"
+  _key="${_key%\"}"
+  _key="${_key#\"}"
   case "${2}" in
     ([tT][rR][uU][eE])     _bool=true ;;
     ([fF][aA][lL][sS][eE]) _bool=false ;;
@@ -364,7 +376,7 @@ json_bool() {
     ([oO][fF][fF])         _bool=false ;;
     (*)                    json_vorhees "Value not a recognised boolean" ;;
   esac
-  printf -- '"%s": %s%s' "${1:-null}" "${_bool}" "${_comma}"
+  printf -- '"%s": %s%s' "${_key}" "${_bool}" "${_comma}"
   unset -v _bool _comma
 }
 
@@ -374,6 +386,8 @@ json_bool() {
 # TO-DO: Extend to map extra bools
 json_bool_append() {
   _key="${1:-null}"
+  _key="${_key%\"}"
+  _key="${_key#\"}"
   case "${2}" in
     ([tT][rR][uU][eE])     _bool=true ;;
     ([fF][aA][lL][sS][eE]) _bool=false ;;
@@ -393,6 +407,8 @@ alias json_append_bool='json_bool_append'
 # Untested, may change.
 json_auto_append() {
   _key="${1}"
+  _key="${_key%\"}"
+  _key="${_key#\"}"
   _value="${2}"
   case $(json_gettype "${_value}") in
     (int|float) json_num_append "${_key}" "${_value}" ;;
@@ -427,6 +443,8 @@ json_from_dkvp() {
   # In the presence of a 'trim()' function, we could do the following cleaner
   # Remove any trailing whitespace from 'key'
   _key="${_key%"${_key##*[![:space:]]}"}"
+  _key="${_key%\"}"
+  _key="${_key#\"}"
 
   # Remove any leading whitespace from 'value'
   _value="${_value#"${_value%%[![:space:]]*}"}"
@@ -457,6 +475,9 @@ json_foreach() {
 
     # Remove any trailing whitespace from 'key'
     _key="${_key%"${_key##*[![:space:]]}"}"
+
+    _key="${_key%\"}"
+    _key="${_key#\"}"
 
     # Remove any leading whitespace from 'value'
     _value="${_value#"${_value%%[![:space:]]*}"}"
