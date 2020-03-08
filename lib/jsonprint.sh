@@ -235,12 +235,13 @@ alias json_append_obj='json_obj_append'
 # Modified from https://stackoverflow.com/a/23166624
 # Some of these might not be strictly necessary... YMMV...
 # TO-DO: Add ability to process its $*/$@, at the moment it must be piped into
+# shellcheck disable=SC2059
 json_str_escape() {
-  od -A n -t o1 -v | tr ' \t' '\n\n' | grep . | sed '$d' |
+  od -A n -t o1 -v | tr ' \t' '\n' | grep . | sed '$d' |
     while read -r _char; do
       case "${_char}" in
         ('00[0-7]')  printf -- '\u00%s' "${_char}" ;;
-        ('02[0-7]')  printf -- '\u00%s' "$(( _char - 10 ))" ;;
+        ('02[0-7]')  printf -- '\u00%s' "$(( "10#${_char}" - 10 ))" ;;
         ('010')  printf -- '%s' "\b" ;;
         ('011')  printf -- '%s' "\t" ;;
         ('012')  printf -- '%s' "\n" ;;
@@ -255,7 +256,7 @@ json_str_escape() {
         ('047')  printf -- '%s' "\'" ;;
         ('057')  printf -- '%s' "\/" ;;
         ('134')  printf -- '%s' "\\" ;;
-        (''|*)   printf -- \\${_char} ;;
+        (''|*)   printf -- "\\${_char}" ;;
       esac
     done
 }
@@ -325,7 +326,7 @@ json_num() {
       printf -- '"%s": %.0f%s' "${_key}" "${2}" "${_comma}"
     ;;
   esac
-  unset -v _comma
+  unset -v _key _comma
 }
 
 # Add a number keypair using printf float natation.  Numbers are unquoted.
@@ -410,6 +411,11 @@ json_auto_append() {
   _key="${_key%\"}"
   _key="${_key#\"}"
   _value="${2}"
+  # Remove any leading whitespace from 'value'
+  _value="${_value#"${_value%%[![:space:]]*}"}"
+
+  # Remove any trailing whitespace from 'value'
+  _value="${_value%"${_value##*[![:space:]]}"}"
   case $(json_gettype "${_value}") in
     (int|float) json_num_append "${_key}" "${_value}" ;;
     (bool)      json_bool_append "${_key}" "${_value}" ;;
