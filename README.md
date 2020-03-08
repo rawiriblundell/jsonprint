@@ -13,7 +13,7 @@ This is, therefore, a *pre-emptive* FAQ where I guess what you'll ask.
 `jsonprint.sh` is a function library that you source into your shell scripts.
 You can then use its functions to format your outputs into a json structure.
 
-It is similar to the python based project, `[jc](https://github.com/kellyjonbrazil/jc)`, 
+It is similar to the python based project, [jc](https://github.com/kellyjonbrazil/jc), 
 and can do similar work, but it can also serve a different purpose.  Namely
 portable shell scripting and representing desired information, rather than 
 rewriting the output of existing commands as `jc` seems to be focused on.
@@ -679,7 +679,7 @@ If an argument is supplied, it outputs:
 ], "arg": [
 ```
 
-If `-n` or `--no-bracket` is specified, the leading bracket is omittied i.e.
+If `-n` or `--no-bracket` is specified, the leading bracket is omitted i.e.
 the output becomes either:
 
 `,[`
@@ -741,7 +741,7 @@ If an argument is supplied, it outputs:
 }, "arg": {
 ```
 
-If `-n` or `--no-bracket` is specified, the leading bracket is omittied i.e.
+If `-n` or `--no-bracket` is specified, the leading bracket is omitted i.e.
 the output becomes either:
 
 `,{`

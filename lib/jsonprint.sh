@@ -67,6 +67,9 @@ json_require() {
     # First try to determine if it's a command
     command -v "${_fsobj}" >/dev/null 2>&1 && continue
 
+    # TO-DO: This may require more smarts
+    [[ -x ./"${_fsobj}" ]] && continue
+
     # Next, let's see if it's a readable file
     [[ -r "${_fsobj}" ]] && continue
 
