@@ -1,4 +1,5 @@
 # jsonprint.sh
+
 A shell function library to assist with formatting shell script output in json.
 
 ## Pre-emptive FAQ
@@ -12,22 +13,44 @@ This is, therefore, a *pre-emptive* FAQ where I guess what you'll ask.
 `jsonprint.sh` is a function library that you source into your shell scripts.
 You can then use its functions to format your outputs into a json structure.
 
+It is similar to the python based project, `[jc](https://github.com/kellyjonbrazil/jc)`, 
+and can do similar work, but it can also serve a different purpose.  Namely
+portable shell scripting and representing desired information, rather than 
+rewriting the output of existing commands as `jc` seems to be focused on.
+
 ### What isn't it?
 
 * A tool that will magically take any input and figure it all out for you
 * A tool that is full of input validation and hand-holding
-* Robust, stable, a smart idea
+* Robust, stable, performant, a smart idea
 * Something you should use if you can avoid it
 
 ### Why is it?
 
-For a while I have been wondering about what various UNIX utilities would look
-like if they had some kind of `--json` option, which could remove some degree of
-fragility from shell scripting if paired up with something like `jq`.
+For quite a while I have been wondering about what various UNIX utilities would
+look like if they had some kind of `--json` option, which could remove some
+degree of fragility from shell scripting if paired up with something like `jq`.
+
+I've had a career full of fixing other people's shell scripting disasters.
+I have fixed a lot of fragile code that, for any of a number of reasons, won't
+ever be rewritten into another language.  I have fixed code where the 
+"glue language" nature of shell makes it _really_ the right tool for the job.
+A lot of this would be more robust if we could simply deal with a structured
+format like json within the glue language model, rather than praying to extract
+something reliably from an often baroque pipeline sequence.
+
+And there are often times when shell is just what you're forced to use, for
+better or worse, and for a wide range of reasons, so we may as well try to make
+the best of it for those situations.
 
 I know that this won't exactly take off and be a thing, but one afternoon, 
 for my own amusement, I started writing a few functions.  And it wound up being 
 a lot easier than I expected to both curate and use.  And so here we are.
+
+I also agree with people on both sides of the fence about `jc`:
+
+* https://www.reddit.com/r/linux/comments/fd2z8m/jc_v180_released_jsonify_your_cli/fjjgjga/
+* https://blog.kellybrazil.com/2019/11/26/bringing-the-unix-philosophy-to-the-21st-century/
 
 ### Examples
 
@@ -90,7 +113,7 @@ how the indentations match up with how I've indented the code above:
 ```
 
 *(**n.b** Indenting the function calls as shown isn't necessary,*
-*but it adds to readability)*
+*but it adds to readability IMHO)*
 
 `json_open()` simply prints `{`
 
@@ -187,7 +210,7 @@ the value will be a string, so we call `json_str()` with the args `nodename` and
 
 We know that subsequent key value pairs will be stacked onto this, and the 
 values will be strings, so we call `json_str_append()` for those extra entries.
-This  function differs from `json_str()` in that it prepends a comma and space, 
+This function differs from `json_str()` in that it prepends a comma and space, 
 giving us:
 
 ```
@@ -231,7 +254,11 @@ Yeah, I get it.  You might like to take a look at the very promising [oil shell.
 And read some of the [robust](https://news.ycombinator.com/item?id=16154438)
 [discussions](https://news.ycombinator.com/item?id=22150603) around it.
 
-Then give it your time and attention.
+Then give it your time and attention.  If you want to.
+
+### I'm still upset and want a 'real' language [insert angry face here]
+
+[I've got so much respect for you](https://www.youtube.com/watch?v=sl8uPLRN4kw)
 
 ### Why would you want to deal with json in shell at all?  That's nuts!
 
@@ -242,6 +269,10 @@ robustness as you can get your hands on.
 Consider this:  Experienced practitioners of the Unix shell are familiar
 with its myriad warts, syntax oddities and edge cases.  One of the most classic
 of which is the parsing `ls` trap.
+
+`ls` is great for interactive use, where you need human readable output.
+
+`ls` is also among the worst things for shell scripting.
 
 Many newbie shell scripters will try to write code where they pluck details out
 of `ls`, usually with some inefficient code like:
@@ -272,6 +303,8 @@ There's a number of problems here.
   around this with a double invocation of `rev` e.g. 
   `ls -la $FILE | rev | cut -d '' -f1 | rev`
   ...or something similarly nonsensical
+* Then you've got whitespace-in-filename challenges
+* Alternatively, you could use non-portable `awk {gsub(marine)}` soup
 * It's an unspoken golden rule of shell scripting:
   Do not [parse ls](https://mywiki.wooledge.org/ParsingLs).
 
@@ -347,10 +380,7 @@ drwxr-x--- 5 rawiri rawiri   72 Feb 29 14:50  ../
     },
 ```
 
-*(This example edge case was from a reddit discussion for `jc`, which is a*
-*similar project, just written in python.  I discovered it a few weeks after I* 
-*started this project.)*
-
+*(This example edge case was from a reddit discussion for `jc`.
 Further down this page is a description about how this function works.
 
 ### How about spaces in key names?
@@ -726,8 +756,8 @@ or
 
 **Example:** `somecommand | json_str_escape`
 
-Some characters in json must be escaped.  A lot of advice at the better end of a
-google will center around using `perl` or `python` to do this.  If we assume 
+Some characters in json must be escaped.  A lot of advice at the better end of
+a google will center around using `perl` or `python` to do this.  If we assume 
 that, then we may as well just use `perl` or `python` for everything else.
 Right?!
 
@@ -735,7 +765,7 @@ So this function converts its stdin into a single column of octals.  Then it
 finds any undesirable octals and prints an escaped replacement.
 
 This might be computationally expensive, so try to avoid it if you can.  I have
-not undertaken any performance testing, so OTOH it may well be reasonable.
+not undertaken any performance testing, so OTOH it may well be reasonable.  YMMV.
 
 ### json_str()
 
@@ -819,7 +849,6 @@ This is the opposite approach to the `_append` functions.
 As per `json_bool()`, it just drops the `-c`/`--comma` options, and pre-pends a
 comma i.e. `, "key": value`.  It otherwise behaves exactly the same.
 
-
 ### json_auto_append
 
 **Args:** (Required).  Two args: Key and Value.
@@ -878,8 +907,8 @@ output function selected and used.
 
 Finally, the object is closed.
 
-This object is structured in isolation.  If you want to append it, you might use
-`json_comma()` before invoking this function.
+This object is structured in isolation.  If you want to append it to something,
+you might use `json_comma()` before invoking this function.
 
 There is no major input validation here, you must ensure that the input is sane.
 
@@ -901,7 +930,7 @@ Or you're outputting data that needs a timestamp to compare to - a file mtime
 
 This is a way of expressing "these are the facts _as at_ time index xyz"
 
-It calls `json_obj_append() --no-brackets`, so it must be run after a close
+It calls `json_obj_append() --no-brackets`, so it _must_ be run after a close
 function like `json_obj_close` or `json_arr_close`.  It then outputs its
 information, and then calls `json_obj_close()`.
 
@@ -934,6 +963,8 @@ In real life usage, it looks like this:
 ```
 
 ## More resources
+
+In no particular order:
 
 * https://json.org
 * https://stedolan.github.io/jq/
