@@ -59,6 +59,31 @@ elif command -v cksum > /dev/null 2>&1; then
   }
 fi
 
+# This function gives a simple determination about a file type
+get_file_type() {
+  local fsobj="${1}"
+  local fsobj_type
+  [[ -b "${fsobj}" ]] && fsobj_type="block special"
+  [[ -c "${fsobj}" ]] && fsobj_type="character special"
+  [[ -d "${fsobj}" ]] && fsobj_type="directory"
+  [[ -L "${fsobj}" ]] && fsobj_type="symlink"
+  [[ -p "${fsobj}" ]] && fsobj_type="named pipe"
+  [[ -t "${fsobj}" ]] && fsobj_type="open file descriptor"
+  [[ -S "${fsobj}" ]] && fsobj_type="socket"
+
+  # If fsobj_type is still unset, these two should capture everything else
+  [[ -x "${fsobj}" ]] && fsobj_type="${fsobj_type:-executable file}"
+  [[ -f "${fsobj}" ]] && fsobj_type="${fsobj_type:-regular file}"
+
+  # Add extra information if it's there
+  [[ -g "${fsobj}" ]] && fsobj_type="${fsobj_type} with set-gid"
+  [[ -u "${fsobj}" ]] && fsobj_type="${fsobj_type} with set-uid"
+  [[ -k "${fsobj}" ]] && fsobj_type="${fsobj_type} with sticky bit"
+
+  # Finally, print our gathered detail
+  printf -- '%s\n' "${fsobj_type}"
+}
+
 # This function attempts a GNU 'stat' call, if it fails it tries a BSD 'stat'
 get_stat_output() {
   stat -c "%U %G %a %s %Y %X %W" "${1:?No target specified}" 2>/dev/null ||
@@ -79,6 +104,7 @@ ls_die() {
 new_object() {
   local fsobj="${1:?No target specified}"
   fsobj_type="$(file "${fsobj}" | awk -F ': ' '{print $2}')"
+  fsobj_type_simple="$(get_file_type "${fsobj}")"
   fsobj_link="$( (stat -c "%N" "${fsobj}" 2>/dev/null || stat -f "%Y" "${fsobj}") | tr -d "'")"
   fsobj_name="$( (stat -c "%n" "${fsobj}" 2>/dev/null || stat -f "%N" "${fsobj}") | json_str_escape)"
   
@@ -96,6 +122,7 @@ new_object() {
     json_num_append fileAccessed "${fsobj_atime}"
     (( fsobj_birth > 0 )) && json_num_append fileCreated "${fsobj_birth}"
     json_str_append fileType "${fsobj_type}"
+    json_str_append fileType_simple "${fsobj_type_simple}"
     json_str_append dereference "${fsobj_link:-$fsobj_name}"
     json_str_append checksum "$(get_file_checksum "${fsobj}" 2>/dev/null)"
   done < <(get_stat_output "${fsobj}")
@@ -115,11 +142,11 @@ json_open
         # As above, track our loop count so that we can appropriately
         # emit the last object without a trailing comma
         (( loop_iter++ ))
-      if (( loop_iter < fsobj_count )); then
-        json_obj_append
-      else
-        json_obj_close
-      fi
+        if (( loop_iter < fsobj_count )); then
+          json_obj_append
+        else
+          json_obj_close
+        fi
     done
   json_arr_close
 json_close

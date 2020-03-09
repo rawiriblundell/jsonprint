@@ -530,6 +530,9 @@ The downside is that if a function exits mid-flight, there's no trapping to
 ensure that the variables are unset.  But if this happens, we probably have a
 bigger issue to investigate.
 
+BUT, if your script(s) that you source this into support a `local` scope, go
+ahead and use that capability - and you probably should.
+
 ## List of Functions
 
 All functions start with `json_`, even when this may seem weird.  I might change
