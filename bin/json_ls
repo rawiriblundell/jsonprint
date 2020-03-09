@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# A simple GNU-specific demonstration of 'ls' with json output
+# A demonstration of 'ls' with json output
 
 # A simple aesthetic function to give another name for '.'
 # shellcheck disable=SC1090
@@ -10,6 +10,7 @@ include ../lib/jsonprint.sh
 
 json_require stat
 
+# Include dotfiles
 shopt -s dotglob nullglob
 
 # Figure out which checksum method is available, start with sha256sum
@@ -37,6 +38,15 @@ get_stat_output() {
     stat -f "%Su %Sg %Op %z %m %a %B" "${1}"
 }
 
+ls_die() {
+  json_open
+    json_obj_open Warning
+      json_str Message Unable to access "${1:?No target specified}"
+    json_obj_close
+  json_close
+  exit 1
+}
+
 produce_json_output() {
   # If we get to this point, let's start building our JSON output
   json_open
@@ -45,12 +55,21 @@ produce_json_output() {
         # We keep a track of how many files are here and how many times we loop
         # This is so that we know not to emit a trailing comma on the last object
         loop_iter=0
-        set -- *
+        case "${1}" in
+          ('')
+            set -- *
+            items=*
+          ;;
+          (*)
+            set -- "${1}"
+            items="${1}"
+          ;;
+        esac
         fsobj_count="${#}"
-        for fsobj in *; do
-          fsobj_type="$(stat -c "%F" "${fsobj}" 2>/dev/null || stat -f "%T")"
-          fsobj_link="$( (stat -c "%N" "${fsobj}" 2>/dev/null || stat -f "%Y") | tr -d "'")"
-          fsobj_name="$( (stat -c "%n" "${fsobj}" 2>/dev/null || stat -f "%N") | json_str_escape)"
+        for fsobj in ${items}; do
+          fsobj_type="$(stat -c "%F" "${fsobj}" 2>/dev/null || stat -f "%HT" "${fsobj}")"
+          fsobj_link="$( (stat -c "%N" "${fsobj}" 2>/dev/null || stat -f "%Y" "${fsobj}") | tr -d "'")"
+          fsobj_name="$( (stat -c "%n" "${fsobj}" 2>/dev/null || stat -f "%N" "${fsobj}") | json_str_escape)"
           
           # Read in a formatted sequence from 'stat' and assign to our vars
           while read -r fsobj_uid fsobj_gid fsobj_mode fsobj_size fsobj_mtime fsobj_atime fsobj_birth; do
@@ -67,7 +86,7 @@ produce_json_output() {
             (( fsobj_birth > 0 )) && json_num_append fileCreated "${fsobj_birth}"
             json_str_append fileType "${fsobj_type}"
             json_str_append dereference "${fsobj_link}"
-            json_str_append checksum "$(get_file_checksum "${fsobj}")"
+            json_str_append checksum "$(get_file_checksum "${fsobj}" 2>/dev/null)"
           done < <(get_stat_output "${fsobj}")
           # As above, track our loop count so that we can appropriately
           # emit the last object without a trailing comma
@@ -86,14 +105,20 @@ produce_json_output() {
 case "${1}" in
   ('') produce_json_output ;;
   (*)
-    fsobj="${1}"
-    if [ -d "${fsobj}" ]; then
-      (
-        cd "${fsobj}" || exit 1
-        produce_json_output
-      )
-    elif [ -r "${fsobj}" ]; then
-      :
-    fi
+    for fsobj in ${*}; do
+      if [ -d "${fsobj}" ]; then
+        (
+          if ! cd "${fsobj}" 2>/dev/null; then
+            ls_die "$(json_str_escape <<< "${fsobj}")"
+          else
+            produce_json_output
+          fi
+        )
+      elif [ -r "${fsobj}" ]; then
+        produce_json_output "${fsobj}"
+      else
+        ls_die "$(json_str_escape <<< "${fsobj}")"
+      fi
+    done
   ;;
 esac
