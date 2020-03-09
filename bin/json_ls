@@ -8,36 +8,64 @@ include() { . "${1}" || exit 1; }
 
 include ../lib/jsonprint.sh
 
+# We require 'stat' for this to work
 json_require stat
 
 # Include dotfiles
 shopt -s dotglob nullglob
 
 # Figure out which checksum method is available, start with sha256sum
+# If a file has a backslash or newline in it, then the hash may start with a '\'
+# This will upset the receiver of this json data as a invalid escape
+# So for all of these functions, we use 'tr' to remove any instances of '\'
 if command -v sha256sum > /dev/null 2>&1; then
-    get_file_checksum() { sha256sum "${1:?No target specified}" | awk '{print $1}'; }
+  get_file_checksum() {
+    sha256sum "${1:?No target specified}" | awk '{print $1}' | tr -d "\\\\"
+  }
 # Next we try for the digest command i.e. Solaris
 elif digest -v -a sha256 "$1" > /dev/null 2>&1; then
-    get_file_checksum() { digest -v -a sha256 "${1:?No target specified}" | awk -F '= ' '{print $2}'; }
+  get_file_checksum() {
+    digest -v -a sha256 "${1:?No target specified}" | 
+    awk -F '= ' '{print $2}' |
+    tr -d "\\\\"
+  }
 # If digest won't play nice with sha256, try again with md5
 elif digest -v -a md5 "$1" > /dev/null 2>&1; then
-    get_file_checksum() { digest -v -a md5 "${1:?No target specified}" | awk -F '= ' '{print $2}'; }
+  get_file_checksum() {
+    digest -v -a md5 "${1:?No target specified}" | 
+    awk -F '= ' '{print $2}' | 
+    tr -d "\\\\"
+  }
 # 'shasum' should cater for AIX hosts, 'csum' may be worth looking at as well
 elif shasum -a 256 "$1" > /devnull 2>&1; then
-    get_file_checksum() { shasum -a 256 "${1:?No target specified}" | awk '{print $1}'; }
+  get_file_checksum() {
+    shasum -a 256 "${1:?No target specified}" |
+    awk '{print $1}' |
+    tr -d "\\\\"
+  }
 # We can always try for md5sum as well
 elif command -v md5sum > /dev/null 2>&1; then
-    get_file_checksum() { md5sum "${1:?No target specified}" | awk '{print $1}'; }
+  get_file_checksum() {
+    md5sum "${1:?No target specified}" |
+    awk '{print $1}' |
+    tr -d "\\\\"
+  }
 # One last try for 'cksum' which should cover more ancient Unices
 elif command -v cksum > /dev/null 2>&1; then
-    get_file_checksum() { cksum "${1:?No target specified}" | awk '{print $1}'; }
+  get_file_checksum() {
+    cksum "${1:?No target specified}" |
+    awk '{print $1}' |
+    tr -d "\\\\"
+  }
 fi
 
+# This function attempts a GNU 'stat' call, if it fails it tries a BSD 'stat'
 get_stat_output() {
   stat -c "%U %G %a %s %Y %X %W" "${1:?No target specified}" 2>/dev/null ||
     stat -f "%Su %Sg %Op %z %m %a %B" "${1}"
 }
 
+# To be potentially used in the future
 ls_die() {
   json_open
     json_obj_open Warning
@@ -47,78 +75,51 @@ ls_die() {
   exit 1
 }
 
-produce_json_output() {
-  # If we get to this point, let's start building our JSON output
-  json_open
-    json_arr_open "${PWD}"
-      json_obj_open
-        # We keep a track of how many files are here and how many times we loop
-        # This is so that we know not to emit a trailing comma on the last object
-        loop_iter=0
-        case "${1}" in
-          ('')
-            set -- *
-            items=*
-          ;;
-          (*)
-            set -- "${1}"
-            items="${1}"
-          ;;
-        esac
-        fsobj_count="${#}"
-        for fsobj in ${items}; do
-          fsobj_type="$(stat -c "%F" "${fsobj}" 2>/dev/null || stat -f "%HT" "${fsobj}")"
-          fsobj_link="$( (stat -c "%N" "${fsobj}" 2>/dev/null || stat -f "%Y" "${fsobj}") | tr -d "'")"
-          fsobj_name="$( (stat -c "%n" "${fsobj}" 2>/dev/null || stat -f "%N" "${fsobj}") | json_str_escape)"
-          
-          # Read in a formatted sequence from 'stat' and assign to our vars
-          while read -r fsobj_uid fsobj_gid fsobj_mode fsobj_size fsobj_mtime fsobj_atime fsobj_birth; do
-            #Cleanup fsobj_mode just in case we've had a BSD style output
-            fsobj_mode="${fsobj_mode#"${fsobj_mode%???}"}"
-            # Place those vars into our JSON structure
-            json_str fileName "${fsobj_name}"
-            json_str_append fileOwner "${fsobj_uid}"
-            json_str_append fileGroup "${fsobj_gid}"
-            json_num_append fileMode "${fsobj_mode}"
-            json_num_append sizeBytes "${fsobj_size}"
-            json_num_append fileModified "${fsobj_mtime}"
-            json_num_append fileAccessed "${fsobj_atime}"
-            (( fsobj_birth > 0 )) && json_num_append fileCreated "${fsobj_birth}"
-            json_str_append fileType "${fsobj_type}"
-            json_str_append dereference "${fsobj_link}"
-            json_str_append checksum "$(get_file_checksum "${fsobj}" 2>/dev/null)"
-          done < <(get_stat_output "${fsobj}")
-          # As above, track our loop count so that we can appropriately
-          # emit the last object without a trailing comma
-          (( loop_iter++ ))
-        if (( loop_iter < fsobj_count )); then
-          json_obj_append
-        else
-          json_obj_close
-        fi
-      done
-    json_arr_close
-  json_close
+# Function to build all the keyvals for a file
+new_object() {
+  local fsobj="${1:?No target specified}"
+  fsobj_type="$(stat -c "%F" "${fsobj}" 2>/dev/null || stat -f "%HT" "${fsobj}")"
+  fsobj_link="$( (stat -c "%N" "${fsobj}" 2>/dev/null || stat -f "%Y" "${fsobj}") | tr -d "'")"
+  fsobj_name="$( (stat -c "%n" "${fsobj}" 2>/dev/null || stat -f "%N" "${fsobj}") | json_str_escape)"
+  
+  # Read in a formatted sequence from 'stat' and assign to our vars
+  while read -r fsobj_uid fsobj_gid fsobj_mode fsobj_size fsobj_mtime fsobj_atime fsobj_birth; do
+    #Cleanup fsobj_mode just in case we've had a BSD style output
+    fsobj_mode="${fsobj_mode#"${fsobj_mode%???}"}"
+    # Place those vars into our JSON structure
+    json_str fileName "${fsobj_name}"
+    json_str_append fileOwner "${fsobj_uid}"
+    json_str_append fileGroup "${fsobj_gid}"
+    json_num_append fileMode "${fsobj_mode}"
+    json_num_append sizeBytes "${fsobj_size}"
+    json_num_append fileModified "${fsobj_mtime}"
+    json_num_append fileAccessed "${fsobj_atime}"
+    (( fsobj_birth > 0 )) && json_num_append fileCreated "${fsobj_birth}"
+    json_str_append fileType "${fsobj_type}"
+    json_str_append dereference "${fsobj_link:-$fsobj_name}"
+    json_str_append checksum "$(get_file_checksum "${fsobj}" 2>/dev/null)"
+  done < <(get_stat_output "${fsobj}")
 }
 
-# Ok, let's start accepting some basic args.  Namely a target.
-case "${1}" in
-  ('') produce_json_output ;;
-  (*)
-    for fsobj in ${*}; do
-      if [ -d "${fsobj}" ]; then
-        (
-          if ! cd "${fsobj}" 2>/dev/null; then
-            ls_die "$(json_str_escape <<< "${fsobj}")"
-          else
-            produce_json_output
-          fi
-        )
-      elif [ -r "${fsobj}" ]; then
-        produce_json_output "${fsobj}"
+# If we get to this point, let's start building our JSON output
+json_open
+  json_arr_open "${PWD}"
+    json_obj_open
+      # We keep a track of how many files are here and how many times we loop
+      # This is so that we know not to emit a trailing comma on the last object
+      loop_iter=0
+      set -- *
+      fsobj_count="${#}"
+      for fsobj in *; do
+        new_object "${fsobj}"
+        # As above, track our loop count so that we can appropriately
+        # emit the last object without a trailing comma
+        (( loop_iter++ ))
+      if (( loop_iter < fsobj_count )); then
+        json_obj_append
       else
-        ls_die "$(json_str_escape <<< "${fsobj}")"
+        json_obj_close
       fi
     done
-  ;;
-esac
+  json_arr_close
+json_close
