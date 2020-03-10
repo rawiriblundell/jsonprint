@@ -52,6 +52,10 @@ I also agree with people on both sides of the fence about `jc`:
 * https://www.reddit.com/r/linux/comments/fd2z8m/jc_v180_released_jsonify_your_cli/fjjgjga/
 * https://blog.kellybrazil.com/2019/11/26/bringing-the-unix-philosophy-to-the-21st-century/
 
+### Are you aware of "${project}"?  Why don't you just use that?
+
+This is my rifle.  There are many like it, but this one is mine.
+
 ### Examples
 
 For a basic example, let's emit the load average of the system.  Consider this
