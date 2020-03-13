@@ -47,7 +47,8 @@ I know that this won't exactly take off and be a thing, but one afternoon,
 for my own amusement, I started writing a few functions.  And it wound up being 
 a lot easier than I expected to both curate and use.  And so here we are.
 
-I also agree with people on both sides of the fence about `jc`:
+I also agree with people on both sides of the fence about `jc`, and many of the
+same arguments very likely apply here:
 
 * https://www.reddit.com/r/linux/comments/fd2z8m/jc_v180_released_jsonify_your_cli/fjjgjga/
 * https://blog.kellybrazil.com/2019/11/26/bringing-the-unix-philosophy-to-the-21st-century/
@@ -244,7 +245,7 @@ There's also the wee issue of very-lightweight containers where the likes of
 
 You know what will *always* be there?  A POSIX compliant shell.
 
-Almost always, [some variant of `ksh` is present.](https://www.in-ulm.de/~mascheck/various/shells/)
+Almost always, this is [some variant of `ksh`.](https://www.in-ulm.de/~mascheck/various/shells/)
 
 While this project is *really* for my own amusement, there are, for better or
 worse, practical applications.  Perhaps you've got some small monitoring script
@@ -384,8 +385,8 @@ drwxr-x--- 5 rawiri rawiri   72 Feb 29 14:50  ../
     },
 ```
 
-*(This example edge case was from a reddit discussion for `jc`.
-Further down this page is a description about how this function works.
+*(This example edge case was from a reddit discussion for `jc`.*
+*Further down this page is a description about how this function works.*)
 
 ### How about spaces in key names?
 
@@ -633,6 +634,8 @@ case $(json_gettype "${_value}") in
 esac
 ```
 
+See, also, `json_auto()` and `json_auto_append()`
+
 ### json_arr_open()
 
 **Args:** (Optional).  One string.
@@ -855,6 +858,16 @@ This is the opposite approach to the `_append` functions.
 
 As per `json_bool()`, it just drops the `-c`/`--comma` options, and pre-pends a
 comma i.e. `, "key": value`.  It otherwise behaves exactly the same.
+
+### json_auto
+
+**Args:** (Required).  Two args: Key and Value.
+
+**Example:** `json_auto interface eth0`
+
+This function attempts to use `json_gettype()` to automatically determine how
+to address the value that is given to it.  It is currently untested, but in
+theory it should work just fine.
 
 ### json_auto_append
 
