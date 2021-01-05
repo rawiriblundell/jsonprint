@@ -32,8 +32,14 @@ json_vorhees() {
 }
 
 # Sigh.  Fine.
-alias json_die='json_vorhees'
-alias json_exception='json_vorhees'
+json_die() {
+  printf -- 'Exception: %s\n' "${@}" >&2
+  exit 1
+}
+json_exception() {
+  printf -- 'Exception: %s\n' "${@}" >&2
+  exit 1
+}
 
 # A curly brace to denote the opening of something, usually the json block
 json_open() {
@@ -61,12 +67,21 @@ json_decomma() {
 
 # Apply a standard set of transformations to tidy up an input
 json_sanitise() {
-  _input="${1:?No input specified}"
+  if [[ -n "${1}" ]]; then
+    _input="${1}"
+  else
+    read -r _input
+  fi
 
   # Strip any literal double quotes.
   # These will be re-added if required by an output function
   _input="${_input%\"}"
   _input="${_input#\"}"
+
+  # Strip any literal single quotes.
+  # These will be re-added if required by an output function
+  _input="${_input%\'}"
+  _input="${_input#\'}"
 
   # Strip any trailing instances of ":" or "="
   _input="${_input%%:*}"
@@ -83,7 +98,37 @@ json_sanitise() {
   unset -v _input
 }
 
-alias json_sanitize='json_sanitise'
+json_sanitize() {
+  if [[ -n "${1}" ]]; then
+    _input="${1}"
+  else
+    read -r _input
+  fi
+
+  # Strip any literal double quotes.
+  # These will be re-added if required by an output function
+  _input="${_input%\"}"
+  _input="${_input#\"}"
+
+  # Strip any literal single quotes.
+  # These will be re-added if required by an output function
+  _input="${_input%\'}"
+  _input="${_input#\'}"
+
+  # Strip any trailing instances of ":" or "="
+  _input="${_input%%:*}"
+  _input="${_input%%=*}"
+
+  # Remove any leading whitespace from 'value'
+  _input="${_input#"${_input%%[![:space:]]*}"}"
+
+  # Remove any trailing whitespace from 'key'
+  _input="${_input%"${_input##*[![:space:]]}"}"
+
+  # Return the input from whence it came
+  printf -- '%s' "${_input}"
+  unset -v _input
+}
 
 # A function to ensure that any commands or files that we need exist
 # On failure, this function generates simple warning keypairs e.g.
@@ -187,7 +232,12 @@ json_arr_open() {
   esac
 }
 
-alias json_open_arr='json_arr_open'
+json_open_arr() {
+  case "${1}" in
+    ('')  printf -- '%s' "[" ;;
+    (*)   printf -- '"%s": [' "${*}" ;;
+  esac
+}
 
 # Close an array block
 # With '-c' or -'--comma', we return '],'
@@ -201,7 +251,14 @@ json_arr_close() {
   unset -v _comma
 }
 
-alias json_close_arr='json_arr_close'
+json_close_arr() {
+  case "${1}" in
+    (-c|--comma) shift 1; _comma="," ;;
+    (*)          _comma="" ;;
+  esac
+  printf -- '%s%s' "]" "${_comma}"
+  unset -v _comma
+}
 
 # Append an array to another
 # If an arg is provided, we return '],"name": ['
@@ -220,7 +277,18 @@ json_arr_append() {
   esac
 }
 
-alias json_append_arr='json_arr_append'
+json_append_arr() {
+  case "${1}" in
+    (-n|--no-bracket)
+      case "${2}" in
+        ('')  printf -- '%s' ",[" ;;
+        (*)   shift 1; printf -- ', "%s": [' "${*}" ;;
+      esac
+    ;;
+    ('')  printf -- '%s' "],[" ;;
+    (*)   printf -- '], "%s": [' "${*}" ;;
+  esac
+}
 
 # Open an object block
 # If an arg is provided, we return '"name": {'
@@ -232,7 +300,12 @@ json_obj_open() {
   esac
 }
 
-alias json_open_obj='json_obj_open'
+json_open_obj() {
+  case "${1}" in
+    ('')  printf -- '%s' "{" ;;
+    (*)   printf -- '"%s": {' "${*}" ;;
+  esac
+}
 
 # Close an object block
 # With '-c' or -'--comma', we return '},'
@@ -245,7 +318,12 @@ json_obj_close() {
   esac 
 }
 
-alias json_close_obj='json_obj_close'
+json_close_obj() {
+  case "${1}" in
+    (-c|--comma)  printf -- '%s,' "}" ;;
+    (''|*)        printf -- '%s' "}" ;;
+  esac 
+}
 
 # Append an object to another
 # With '-n' or '--no-bracket', the leading bracket is omitted
@@ -262,7 +340,18 @@ json_obj_append() {
   esac
 }
 
-alias json_append_obj='json_obj_append'
+json_append_obj() {
+  case "${1}" in
+    (-n|--no-bracket)
+      case "${2}" in
+        ('')  printf -- '%s' ",{" ;;
+        (*)   shift 1; printf -- ', "%s": {' "${*}" ;;
+      esac
+    ;;
+    ('')  printf -- '%s' "},{" ;;
+    (*)   printf -- '}, "%s": {' "${*}" ;;
+  esac
+}
 
 # A function to escape characters that must be escaped in JSON
 # This converts stdin into a single column of octals
@@ -272,32 +361,56 @@ alias json_append_obj='json_obj_append'
 # TO-DO: Add ability to process its $*/$@, at the moment it must be piped into
 # shellcheck disable=SC2059
 json_str_escape() {
-  od -A n -t o1 -v | tr ' \t' '\n' | grep . | sed '$d' |
+    od -A n -t o1 -v | tr ' \t' '\n' | grep . |
     while read -r _char; do
       case "${_char}" in
         ('00[0-7]')  printf -- '\u00%s' "${_char}" ;;
         ('02[0-7]')  printf -- '\u00%s' "$(( "10#${_char}" - 10 ))" ;;
-        ('010')  printf -- '%s' "\b" ;;
-        ('011')  printf -- '%s' "\t" ;;
-        ('012')  printf -- '%s' "\n" ;;
-        ('013')  printf -- '\u00%s' "0B" ;;
-        ('014')  printf -- '%s' "\f" ;;
-        ('015')  printf -- '%s' "\r" ;;
-        ('016')  printf -- '\u00%s' "0E" ;;
-        ('017')  printf -- '\u00%s' "0F" ;;
-        ('030')  printf -- '\u00%s' "18" ;;
-        ('031')  printf -- '\u00%s' "19" ;;
-        ('042')  printf -- '%s' "\\\"" ;;
-        ('047')  printf -- '%s' "\'" ;;
-        ('057')  printf -- '%s' "\/" ;;
-        ('134')  printf -- '%s' "\\" ;;
-        (''|*)   printf -- "\\${_char}" ;;
+        ('010')      printf -- '%s' "\b" ;;
+        ('011')      printf -- '%s' "\t" ;;
+        ('012')      printf -- '%s' "\n" ;;
+        ('013')      printf -- '\u00%s' "0B" ;;
+        ('014')      printf -- '%s' "\f" ;;
+        ('015')      printf -- '%s' "\r" ;;
+        ('016')      printf -- '\u00%s' "0E" ;;
+        ('017')      printf -- '\u00%s' "0F" ;;
+        ('030')      printf -- '\u00%s' "18" ;;
+        ('031')      printf -- '\u00%s' "19" ;;
+        ('042')      printf -- '%s' "\\\"" ;;
+        #('047')      printf -- '%s' "\'" ;;
+        #('057')      printf -- '%s' "\/" ;;
+        ('134')      printf -- '%s' "\\" ;;
+        (''|*)       printf -- "\\${_char}" ;;
       esac
     done
   unset -v _char
 }
 
-alias json_escape_str='json_str_escape'
+json_escape_str() {
+    od -A n -t o1 -v | tr ' \t' '\n' | grep . |
+    while read -r _char; do
+      case "${_char}" in
+        ('00[0-7]')  printf -- '\u00%s' "${_char}" ;;
+        ('02[0-7]')  printf -- '\u00%s' "$(( "10#${_char}" - 10 ))" ;;
+        ('010')      printf -- '%s' "\b" ;;
+        ('011')      printf -- '%s' "\t" ;;
+        ('012')      printf -- '%s' "\n" ;;
+        ('013')      printf -- '\u00%s' "0B" ;;
+        ('014')      printf -- '%s' "\f" ;;
+        ('015')      printf -- '%s' "\r" ;;
+        ('016')      printf -- '\u00%s' "0E" ;;
+        ('017')      printf -- '\u00%s' "0F" ;;
+        ('030')      printf -- '\u00%s' "18" ;;
+        ('031')      printf -- '\u00%s' "19" ;;
+        ('042')      printf -- '%s' "\\\"" ;;
+        #('047')      printf -- '%s' "\'" ;;
+        #('057')      printf -- '%s' "\/" ;;
+        ('134')      printf -- '%s' "\\" ;;
+        (''|*)       printf -- "\\${_char}" ;;
+      esac
+    done
+  unset -v _char
+}
 
 # Format a string keypair
 # With '-c' or '--comma', we return '"key": "value",'
@@ -330,7 +443,15 @@ json_str_append() {
   unset -v _key
 }
 
-alias json_append_str='json_str_append'
+json_append_str() {
+  # Clean and assign the _key variable
+  _key="$(json_sanitise "${1:-null}")"
+  case "${2}" in
+    (null|'') printf -- ', "%s": %s' "${_key}" "null" ;;
+    (*)       shift; printf -- ', "%s": "%s"' "${_key}" "${*}" ;;
+  esac
+  unset -v _key
+}
 
 # Format a number keypair using printf float notation.  Numbers are unquoted.
 # With '-c' or '--comma', we return '"key": value,'
@@ -387,7 +508,26 @@ json_num_append() {
   unset -v _key _value
 }
 
-alias json_append_num='json_num_append'
+json_append_num() {
+  # Clean and assign the _key and _value variables
+  _key="$(json_sanitise "${1}")"
+  _value="$(json_sanitise "${2:-null}")"
+  case "${_value}" in
+    (''|null)
+      printf -- ', "%s": %s' "${_key}" "null"
+    ;;
+    (*[!0-9.]*)
+      json_vorhees "Value '${_value}' not a number"
+    ;;
+    (*[0-9][.][0-9]*)
+      printf -- ', "%s": %.2f' "${_key}" "${_value}"
+    ;;
+    (*)
+      printf -- ', "%s": %.0f' "${_key}" "${_value}"
+    ;;
+  esac
+  unset -v _key _value
+}
 
 # Format a boolean true/false keypair.  Booleans are unquoted.
 # With '-c' or '--comma', we return '"key": value,'
@@ -436,7 +576,22 @@ json_bool_append() {
   unset -v _key _value _bool
 }
 
-alias json_append_bool='json_bool_append'
+json_append_bool() {
+  # Clean and assign the _key and _value variables
+  _key="$(json_sanitise "${1:-null}")"
+  _value="$(json_sanitise "${2:-null}")"
+  case "${_value}" in
+    ([tT][rR][uU][eE])     _bool=true ;;
+    ([fF][aA][lL][sS][eE]) _bool=false ;;
+    ([yY][eE][sS])         _bool=true ;;
+    ([nN][oO])             _bool=false ;;
+    ([oO][nN])             _bool=true ;;
+    ([oO][fF][fF])         _bool=false ;;
+    (*)                    json_vorhees "Value not a recognised boolean" ;;
+  esac
+  printf -- ', "%s": %s' "${_key}" "${_bool}"
+  unset -v _key _value _bool
+}
 
 # Attempt to automatically figure out how to address a key value pair
 # Untested, may change.
@@ -466,7 +621,17 @@ json_auto_append() {
   unset -v _key _value
 }
 
-alias json_append_auto='json_auto_append'
+json_append_auto() {
+  # Clean and assign the _key and _value variables
+  _key="$(json_sanitise "${1}")"
+  _value="$(json_sanitise "${2:-null}")"
+  case $(json_gettype "${_value}") in
+    (int|float) json_num_append "${_key}" "${_value}" ;;
+    (bool)      json_bool_append "${_key}" "${_value}" ;;
+    (string)    json_str_append "${_key}" "${_value}" ;;
+  esac
+  unset -v _key _value
+}
 
 # This function takes a comma or equals delimited key-value pair input
 # and emits it in a way that can be used by e.g. json_str()

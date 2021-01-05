@@ -1,0 +1,110 @@
+#!/bin/bash
+# shellcheck disable=SC2086
+
+# A demonstration of 'free' with json output
+
+# A simple aesthetic function to give another name for '.'
+# shellcheck disable=SC1090
+include() { . "${1}" || exit 1; }
+
+include ../lib/jsonprint.sh
+
+# We require the 'free' command for this to work
+json_require free
+
+# Read all of the output, with total line, into an array
+while IFS=$'\n' read -r; do
+  free_array+=( "${REPLY}" )
+done < <(free -t)
+
+# If we have a version of 'free' that supports human readable format
+# then we suck that into an array as well
+if free -h >/dev/null 2>&1; then
+  while IFS=$'\n' read -r; do
+    free_h_array+=( "${REPLY}" )
+  done < <(free -ht)
+fi
+
+json_open
+  json_obj_open free
+    json_obj_open Total
+      # Assign the fourth array element to the positional parameter array
+      # each word is assigned to the shell variables $[int] e.g.
+      # Total:     25374360     7977428    11186724
+      # ^ $1       ^ $2         ^ $3       ^ $4
+      set -- ${free_array[3]}
+      json_num total "${2}"
+      json_num_append used "${3}"
+      json_num_append free "${4}"
+      # If the human readable array has elements, we present them as well
+      if (( "${#free_h_array[@]}" > 0 )); then
+        set -- ${free_h_array[3]}
+        json_comma
+        json_obj_open "total_human"
+          # This variable expansion outputs the last character of a variable
+          # e.g. if $2 is '9.5G', then ${2##${2%?}} is 'G'
+          json_str unit "${2##${2%?}}"
+          # This variable expansion outputs all _but_ the last character
+          # i.e. '9.5G' becomes '9.5'
+          json_num_append size "${2%?}"
+        json_obj_append "used_human"
+          json_str unit "${3##${3%?}}"
+          json_num_append size "${3%?}"
+        json_obj_append "free_human"
+          json_str unit "${4##${4%?}}"
+          json_num_append size "${4%?}"
+        json_obj_close
+      fi
+    json_obj_append Mem
+      set -- ${free_array[1]}
+      json_num total "${2}"
+      json_num_append used "${3}"
+      json_num_append free "${4}"
+      json_num_append shared "${5}"
+      json_num_append buff/cache "${6}"
+      json_num_append available "${7}"
+      if (( "${#free_h_array[@]}" > 0 )); then
+        set -- ${free_h_array[1]}
+        json_comma
+        json_obj_open "total_human"
+          json_str unit "${2##${2%?}}"
+          json_num_append size "${2%?}"
+        json_obj_append "used_human"
+          json_str unit "${3##${3%?}}"
+          json_num_append size "${3%?}"
+        json_obj_append "free_human"
+          json_str unit "${4##${4%?}}"
+          json_num_append size "${4%?}"
+        json_obj_append "shared_human"
+          json_str unit "${5##${5%?}}"
+          json_num_append size "${5%?}"
+        json_obj_append "buff/cache_human"
+          json_str unit "${6##${6%?}}"
+          json_num_append size "${6%?}"
+        json_obj_append "available_human"
+          json_str unit "${7##${7%?}}"
+          json_num_append size "${7%?}"
+        json_obj_close
+      fi
+    json_obj_append Swap
+      set -- ${free_array[2]}
+      json_num total "${2}"
+      json_num_append used "${3}"
+      json_num_append free "${4}"
+      if (( "${#free_h_array[@]}" > 0 )); then
+        set -- ${free_h_array[2]}
+        json_comma
+        json_obj_open "total_human"
+          json_str unit "${2##${2%?}}"
+          json_num_append size "${2%?}"
+        json_obj_append "used_human"
+          json_str unit "${3##${3%?}}"
+          json_num_append size "${3%?}"
+        json_obj_append "free_human"
+          json_str unit "${4##${4%?}}"
+          json_num_append size "${4%?}"
+        json_obj_close
+      fi
+    json_obj_close
+  json_obj_close
+json_close
