@@ -26,9 +26,9 @@ json_open
   loop_iter=1
 
   # Open a json array
-  json_arr_open "/proc/cpuinfo"
+  json_open_arr "/proc/cpuinfo"
     # Open the first json object
-    json_obj_open
+    json_open_obj
 
     # Loop through our array elements
     for obj_element in "${obj_array[@]}"; do
@@ -59,14 +59,14 @@ json_open
                 json_str "${key}" "${value}"
               # Otherwise, use append, which stacks a keypair with leading comma
               else
-                json_str_append "${key}" "${value}"
+                json_append_str "${key}" "${value}"
               fi
             ;;
             (int|float)
               if (( mapfile_iter == 0 )); then
                 json_num "${key}" "${value}"
               else
-                json_num_append "${key}" "${value}"
+                json_append_num "${key}" "${value}"
               fi
             ;;
           esac
@@ -74,12 +74,12 @@ json_open
           (( mapfile_iter++ ))
         done < <(printf -- '%s\n' "${MAPFILE[@]}" | grep .)
       if (( loop_iter >= "${#obj_array[@]}" )); then
-        json_obj_close
+        json_close_obj
       else
         (( loop_iter++ ))
-        json_obj_append
+        json_append_obj
       fi
     done
-  json_arr_close
+  json_close_arr
 json_close
 

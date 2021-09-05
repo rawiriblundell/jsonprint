@@ -27,10 +27,10 @@ else
 fi
 
 json_open
-  json_obj_open load_average
+  json_open_obj load_average
     json_num 1min "${one_min}"
-    json_num_append 5min "${five_min}"
-    json_num_append 15min "${fifteen_min}"
-  json_obj_close
+    json_append_num 5min "${five_min}"
+    json_append_num 15min "${fifteen_min}"
+  json_close_obj
   json_timestamp
 json_close

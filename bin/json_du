@@ -17,19 +17,19 @@ target_dir="${1:-.}"
 (
   cd "${target_dir}" || json_vorhees "Could not access ${target_dir}"
   json_open
-    json_arr_open du_"${PWD:-$(pwd)}"
+    json_open_arr du_"${PWD:-$(pwd)}"
       loop_iter=0
       while read -r size name; do
         if (( loop_iter == 0 )); then
-          json_obj_open
+          json_open_obj
           (( loop_iter++ ))
         else
-          json_obj_append
+          json_append_obj
         fi
         json_str size "${size}"
-        json_str_append name "${PWD:-$(pwd)}/${name##*/}"
+        json_append_str name "${PWD:-$(pwd)}/${name##*/}"
       done < <(find . \( -name . -o -prune \) -type f -exec du -h {} \;)
-      json_obj_close
-    json_arr_close
+      json_close_obj
+    json_close_arr
   json_close
 )

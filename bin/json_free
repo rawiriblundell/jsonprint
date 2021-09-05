@@ -26,85 +26,85 @@ if free -h >/dev/null 2>&1; then
 fi
 
 json_open
-  json_obj_open free
-    json_obj_open Total
+  json_open_obj free
+    json_open_obj Total
       # Assign the fourth array element to the positional parameter array
       # each word is assigned to the shell variables $[int] e.g.
       # Total:     25374360     7977428    11186724
       # ^ $1       ^ $2         ^ $3       ^ $4
       set -- ${free_array[3]}
       json_num total "${2}"
-      json_num_append used "${3}"
-      json_num_append free "${4}"
+      json_append_num used "${3}"
+      json_append_num free "${4}"
       # If the human readable array has elements, we present them as well
       if (( "${#free_h_array[@]}" > 0 )); then
         set -- ${free_h_array[3]}
         json_comma
-        json_obj_open "total_human"
-          # This variable expansion outputs the last character of a variable
-          # e.g. if $2 is '9.5G', then ${2##${2%?}} is 'G'
-          json_str unit "${2##${2%?}}"
-          # This variable expansion outputs all _but_ the last character
-          # i.e. '9.5G' becomes '9.5'
-          json_num_append size "${2%?}"
-        json_obj_append "used_human"
-          json_str unit "${3##${3%?}}"
-          json_num_append size "${3%?}"
-        json_obj_append "free_human"
-          json_str unit "${4##${4%?}}"
-          json_num_append size "${4%?}"
-        json_obj_close
+        json_open_obj "total_human"
+          # This variable expansion outputs the human readable measurement unit
+          # e.g. '9.5G' => 'G', '456Mi' => 'Mi'
+          json_str unit "${2//[0-9.]/}"
+          # This variable expansion outputs the measure
+          # i.e. '9.5G' => '9.5', '456Mi' => '456'
+          json_append_num size "${2//[^0-9.]/}"
+        json_append_obj "used_human"
+          json_str unit "${3//[0-9.]/}"
+          json_append_num size "${3//[^0-9.]/}"
+        json_append_obj "free_human"
+          json_str unit "${4//[0-9.]/}"
+          json_append_num size "${4//[^0-9.]/}"
+        json_close_obj
       fi
-    json_obj_append Mem
+    json_append_obj Mem
       set -- ${free_array[1]}
       json_num total "${2}"
-      json_num_append used "${3}"
-      json_num_append free "${4}"
-      json_num_append shared "${5}"
-      json_num_append buff/cache "${6}"
-      json_num_append available "${7}"
+      json_append_num used "${3}"
+      json_append_num free "${4}"
+      json_append_num shared "${5}"
+      json_append_num buff/cache "${6}"
+      json_append_num available "${7}"
       if (( "${#free_h_array[@]}" > 0 )); then
         set -- ${free_h_array[1]}
         json_comma
-        json_obj_open "total_human"
-          json_str unit "${2##${2%?}}"
-          json_num_append size "${2%?}"
-        json_obj_append "used_human"
-          json_str unit "${3##${3%?}}"
-          json_num_append size "${3%?}"
-        json_obj_append "free_human"
-          json_str unit "${4##${4%?}}"
-          json_num_append size "${4%?}"
-        json_obj_append "shared_human"
-          json_str unit "${5##${5%?}}"
-          json_num_append size "${5%?}"
-        json_obj_append "buff/cache_human"
-          json_str unit "${6##${6%?}}"
-          json_num_append size "${6%?}"
-        json_obj_append "available_human"
-          json_str unit "${7##${7%?}}"
-          json_num_append size "${7%?}"
-        json_obj_close
+        json_open_obj "total_human"
+          json_str unit "${2//[0-9.]/}"
+          json_append_num size "${2//[^0-9.]/}"
+        json_append_obj "used_human"
+          json_str unit "${3//[0-9.]/}"
+          json_append_num size "${3//[^0-9.]/}"
+        json_append_obj "free_human"
+          json_str unit "${4//[0-9.]/}"
+          json_append_num size "${4//[^0-9.]/}"
+        json_append_obj "shared_human"
+          json_str unit "${5//[0-9.]/}"
+          json_append_num size "${5//[^0-9.]/}"
+        json_append_obj "buff/cache_human"
+          json_str unit "${6//[0-9.]/}"
+          json_append_num size "${6//[^0-9.]/}"
+        json_append_obj "available_human"
+          json_str unit "${7//[0-9.]/}"
+          json_append_num size "${7//[^0-9.]/}"
+        json_close_obj
       fi
-    json_obj_append Swap
+    json_append_obj Swap
       set -- ${free_array[2]}
       json_num total "${2}"
-      json_num_append used "${3}"
-      json_num_append free "${4}"
+      json_append_num used "${3}"
+      json_append_num free "${4}"
       if (( "${#free_h_array[@]}" > 0 )); then
         set -- ${free_h_array[2]}
         json_comma
-        json_obj_open "total_human"
-          json_str unit "${2##${2%?}}"
-          json_num_append size "${2%?}"
-        json_obj_append "used_human"
-          json_str unit "${3##${3%?}}"
-          json_num_append size "${3%?}"
-        json_obj_append "free_human"
-          json_str unit "${4##${4%?}}"
-          json_num_append size "${4%?}"
-        json_obj_close
+        json_open_obj "total_human"
+          json_str unit "${2//[0-9.]/}"
+          json_append_num size "${2//[^0-9.]/}"
+        json_append_obj "used_human"
+          json_str unit "${3//[0-9.]/}"
+          json_append_num size "${3//[^0-9.]/}"
+        json_append_obj "free_human"
+          json_str unit "${4//[0-9.]/}"
+          json_append_num size "${4//[^0-9.]/}"
+        json_close_obj
       fi
-    json_obj_close
-  json_obj_close
+    json_close_obj
+  json_close_obj
 json_close

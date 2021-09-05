@@ -49,46 +49,46 @@ get_part_info() {
 format_blk_info() {
   while read -r name majmin rm size ro type mountpoint; do
     json_str name "${name}"
-    json_str_append "maj:min" "${majmin}"
-    json_str_append rm "${rm}"
-    json_str_append size "${size}"
-    json_str_append ro "${ro}"
-    json_str_append type "${type}"
-    json_str_append mountpoint "${mountpoint}"
+    json_append_str "maj:min" "${majmin}"
+    json_append_str rm "${rm}"
+    json_append_str size "${size}"
+    json_append_str ro "${ro}"
+    json_append_str type "${type}"
+    json_append_str mountpoint "${mountpoint}"
   done
 }
 
 json_open
-  json_arr_open blockdevices
+  json_open_arr blockdevices
     disk_iter_count=0
     for disk in $(get_disk_list); do
       if (( disk_iter_count == 0 )); then
-        json_obj_open
+        json_open_obj
       else
-        json_obj_append
+        json_append_obj
       fi
         get_disk_info "${disk}" | format_blk_info
         json_comma
-        json_arr_open children
+        json_open_arr children
           part_iter_count=0
           # If child count is 0, close the array immediately
           child_count=$(get_dev_children "${disk}" | grep -c .)
           if (( child_count == 0 )); then
-            json_arr_close
+            json_close_arr
           else
             for part in $(get_dev_children "${disk}"); do
               if (( part_iter_count == 0 )); then
-                json_obj_open
+                json_open_obj
                 (( part_iter_count++ ))
               else
-                json_obj_append
+                json_append_obj
               fi
               get_part_info "${part}" | format_blk_info
             done
-            json_obj_close
+            json_close_obj
           fi
-        json_arr_close
+        json_close_arr
       done
-    json_obj_close
-  json_arr_close
+    json_close_obj
+  json_close_arr
 json_close

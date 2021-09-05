@@ -17,8 +17,8 @@ json_open
   loop_iter=0
 
   # Open a json array
-  json_arr_open "/proc/meminfo"
-    json_obj_open
+  json_open_arr "/proc/meminfo"
+    json_open_obj
 
       # Start processing the file line by line
       while IFS=':' read -r key value; do
@@ -44,13 +44,13 @@ json_open
         if (( loop_iter == 0 )); then
           json_num "${key}" "${value}"
         else
-          json_num_append "${key}" "${value}"
+          json_append_num "${key}" "${value}"
         fi
 
         # Increment our loop tracker
         (( loop_iter++))
       done < /proc/meminfo
 
-    json_obj_close
-  json_arr_close
+    json_close_obj
+  json_close_arr
 json_close

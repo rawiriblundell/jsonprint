@@ -11,29 +11,29 @@ include ../lib/jsonprint.sh
 
 json_open
   json_str firstName John
-  json_str_append lastName Smith
-  json_bool_append isAlive true
-  json_num_append age 27
+  json_append_str lastName Smith
+  json_append_bool isAlive true
+  json_append_num age 27
   json_comma
-  json_obj_open address
+  json_open_obj address
     json_str streetAddress 21 2nd Street
-    json_str_append city New York
-    json_str_append state NY
-    json_str_append postalCode 10021-3100
-  json_obj_close --comma
-  json_arr_open phoneNumbers
-    json_obj_open
+    json_append_str city New York
+    json_append_str state NY
+    json_append_str postalCode 10021-3100
+  json_close_obj --comma
+  json_open_arr phoneNumbers
+    json_open_obj
       json_str type home
-      json_str_append number 212 555-1234
-    json_obj_append
+      json_append_str number 212 555-1234
+    json_append_obj
       json_str type office
-      json_str_append number 646 555-4567
-    json_obj_append
+      json_append_str number 646 555-4567
+    json_append_obj
       json_str type mobile
-      json_str_append number 123 456-7890
-    json_obj_close
-  json_arr_close --comma
-  json_arr_open children
-  json_arr_close
-  json_str_append spouse
+      json_append_str number 123 456-7890
+    json_close_obj
+  json_close_arr --comma
+  json_open_arr children
+  json_close_arr
+  json_append_str spouse
 json_close

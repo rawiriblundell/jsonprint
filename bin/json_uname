@@ -12,14 +12,14 @@ include() { . "${1}" || exit 1; }
 include ../lib/jsonprint.sh
 
 json_open
-  json_obj_open uname
+  json_open_obj uname
     json_str nodename "$(uname -n)"
-    json_str_append os_kernel "$(uname -s)"
-    uname -o >/dev/null 2>&1 && json_str_append os_name "$(uname -o)"
-    json_str_append os_version "$(uname -v)"
-    json_str_append release_level "$(uname -r)"
-    json_str_append hardware_type "$(uname -m)"
-    uname -i >/dev/null 2>&1 && json_str_append platform "$(uname -i)"
-    uname -p >/dev/null 2>&1 && json_str_append processor "$(uname -p)"
-  json_obj_close
+    json_append_str os_kernel "$(uname -s)"
+    uname -o >/dev/null 2>&1 && json_append_str os_name "$(uname -o)"
+    json_append_str os_version "$(uname -v)"
+    json_append_str release_level "$(uname -r)"
+    json_append_str hardware_type "$(uname -m)"
+    uname -i >/dev/null 2>&1 && json_append_str platform "$(uname -i)"
+    uname -p >/dev/null 2>&1 && json_append_str processor "$(uname -p)"
+  json_close_obj
 json_close

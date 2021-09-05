@@ -13,9 +13,9 @@ This is, therefore, a *pre-emptive* FAQ where I guess what you'll ask.
 `jsonprint.sh` is a function library that you source into your shell scripts.
 You can then use its functions to format your outputs into a json structure.
 
-It is similar to the python based project, [jc](https://github.com/kellyjonbrazil/jc), 
+It is similar to the python based project, [jc](https://github.com/kellyjonbrazil/jc),
 and can do similar work, but it can also serve a different purpose.  Namely
-portable shell scripting and representing desired information, rather than 
+portable shell scripting and representing desired information, rather than
 rewriting the output of existing commands as `jc` seems to be focused on.
 
 ### What isn't it?
@@ -33,7 +33,7 @@ degree of fragility from shell scripting if paired up with something like `jq`.
 
 I've had a career full of fixing other people's shell scripting disasters.
 I have fixed a lot of fragile code that, for any of a number of reasons, won't
-ever be rewritten into another language.  I have fixed code where the 
+ever be rewritten into another language.  I have fixed code where the
 "glue language" nature of shell makes it _really_ the right tool for the job.
 A lot of this would be more robust if we could simply deal with a structured
 format like json within the glue language model, rather than praying to extract
@@ -43,8 +43,8 @@ And there are often times when shell is just what you're forced to use, for
 better or worse, and for a wide range of reasons, so we may as well try to make
 the best of it for those situations.
 
-I know that this won't exactly take off and be a thing, but one afternoon, 
-for my own amusement, I started writing a few functions.  And it wound up being 
+I know that this won't exactly take off and be a thing, but one afternoon,
+for my own amusement, I started writing a few functions.  And it wound up being
 a lot easier than I expected to both curate and use.  And so here we are.
 
 I also agree with people on both sides of the fence about `jc`, and many of the
@@ -62,7 +62,7 @@ This is my rifle.  There are many like it, but this one is mine.
 For a basic example, let's emit the load average of the system.  Consider this
 block of `bash` code, with comments removed:
 
-```
+```bash
 include ../lib/jsonprint.sh
 
 get_epoch() {
@@ -84,12 +84,12 @@ else
 fi
 
 json_open
-  json_obj_open load_average
+  json_open_obj load_average
     json_num 1min "${one_min}"
-    json_num_append 5min "${five_min}"
-    json_num_append 15min "${fifteen_min}"
-    json_num_append utctime "$(get_epoch)"
-  json_obj_close
+    json_append_num 5min "${five_min}"
+    json_append_num 15min "${fifteen_min}"
+    json_append_num utctime "$(get_epoch)"
+  json_close_obj
 json_close
 ```
 
@@ -97,7 +97,7 @@ json_close
 
 This is what the output looks like:
 
-```
+```bash
 ▓▒░$ bash json_loadavg
 {"load_average": {"1min": 0.6, "5min": 0.97, "15min": 1, "utctime": 1583097518}}
 ```
@@ -105,7 +105,7 @@ This is what the output looks like:
 This is what the output looks like when pretty printed via `jq`, you can see
 how the indentations match up with how I've indented the code above:
 
-```
+```bash
 ▓▒░$ bash json_loadavg | jq -r '.'
 {
   "load_average": {
@@ -122,7 +122,7 @@ how the indentations match up with how I've indented the code above:
 
 `json_open()` simply prints `{`
 
-`json_obj_open()` will open an object, in this case we have given it an argument,
+`json_open_obj()` will open an object, in this case we have given it an argument,
 so it will generate `"load_average": {`
 
 We have previously gathered our statistics and put them into variables, so it's
@@ -132,50 +132,50 @@ We know each value is going to be a number, so we call `json_num()` and give
 it our first key value pair for the one minute average, with the key `1min` and
 the value `"${one_min}"`.  This will give the output:
 
-```
+```bash
 "1min": 0.6
 ```
 
 We know that the next key value pairs will be stacked onto this, so we call
-`json_num_append()` for those extra entries.  This function differs from 
+`json_append_num()` for those extra entries.  This function differs from
 `json_num()` in that it prepends a comma and space, giving us:
 
-```
+```bash
 "1min": 0.6, "5min": 0.97
 ```
 
-Subsequent invocations of `json_num_append()` will continue to stack keyvals.
+Subsequent invocations of `json_append_num()` will continue to stack keyvals.
 
-*(**n.b** `json_num()` and `json_num_append()` will detect if the shell*
+*(**n.b** `json_num()` and `json_append_num()` will detect if the shell*
 *variables are blank and in that situation will output `null`.)*
 
-`json_obj_close()` simply prints `}`
+`json_close_obj()` simply prints `}`
 
 `json_close()` simply prints `}`
 
 ---
 
-For a very slightly more advanced example, let's take the formatting of `uname` 
-and json-ify it.  Because `uname` does not natively give out safely parsable 
-output, we do have to make multiple calls to it, which is unfortunate and 
+For a very slightly more advanced example, let's take the formatting of `uname`
+and json-ify it.  Because `uname` does not natively give out safely parsable
+output, we do have to make multiple calls to it, which is unfortunate and
 annoying, but relatively low impact.
 
 Here's the code, without comments:
 
-```
+```bash
 include ../lib/jsonprint.sh
 
 json_open
-  json_obj_open uname
+  json_open_obj uname
     json_str nodename "$(uname -n)"
-    json_str_append os_kernel "$(uname -s)"
-    uname -o >/dev/null 2>&1 && json_str_append os_name "$(uname -o)"
-    json_str_append os_version "$(uname -v)"
-    json_str_append release_level "$(uname -r)"
-    json_str_append hardware_type "$(uname -m)"
-    uname -i >/dev/null 2>&1 && json_str_append platform "$(uname -i)"
-    uname -p >/dev/null 2>&1 && json_str_append processor "$(uname -p)"
-  json_obj_close
+    json_append_str os_kernel "$(uname -s)"
+    uname -o >/dev/null 2>&1 && json_append_str os_name "$(uname -o)"
+    json_append_str os_version "$(uname -v)"
+    json_append_str release_level "$(uname -r)"
+    json_append_str hardware_type "$(uname -m)"
+    uname -i >/dev/null 2>&1 && json_append_str platform "$(uname -i)"
+    uname -p >/dev/null 2>&1 && json_append_str processor "$(uname -p)"
+  json_close_obj
 json_close
 ```
 
@@ -184,7 +184,7 @@ json_close
 This is what the output looks like when pretty-printed via `jq`, you can see
 how the indentations match up with how I've indented the code above:
 
-```
+```bash
 ▓▒░$ bash json_uname | jq -r '.'
 {
   "uname": {
@@ -202,33 +202,33 @@ how the indentations match up with how I've indented the code above:
 
 `json_open()` simply prints `{`, and likewise, `json_close()` simply prints `}`
 
-`json_obj_open()` will open an object, in this case we have given it an argument,
+`json_open_obj()` will open an object, in this case we have given it an argument,
 so it will generate `"uname": {`
 
 We have selected the nodename to be our first key value pair, and we know that
 the value will be a string, so we call `json_str()` with the args `nodename` and
 `"$(uname -n)"`.  This will give the output:
 
-```
+```bash
 "nodename": "minty"
 ```
 
-We know that subsequent key value pairs will be stacked onto this, and the 
-values will be strings, so we call `json_str_append()` for those extra entries.
-This function differs from `json_str()` in that it prepends a comma and space, 
+We know that subsequent key value pairs will be stacked onto this, and the
+values will be strings, so we call `json_append_str()` for those extra entries.
+This function differs from `json_str()` in that it prepends a comma and space,
 giving us:
 
-```
+```bash
 "nodename": "minty", "os_kernel": "Linux"
 ```
 
-Subsequent invocations of `json_str_append()` will continue to stack keyvals.
+Subsequent invocations of `json_append_str()` will continue to stack keyvals.
 
 Some versions of `uname` support options that may be nice to have, so we use
-idioms like `uname -o >/dev/null 2>&1 && json_str_append os_name "$(uname -o)"`
-That is to say:  If `uname -o` works, then generate e.g. 
-`"os_name": "GNU/Linux"`, otherwise, if `uname -o` doesn't work, then don't do 
-anything here.  This kind of idiom allows us to script portably, but to also 
+idioms like `uname -o >/dev/null 2>&1 && json_append_str os_name "$(uname -o)"`
+That is to say:  If `uname -o` works, then generate e.g.
+`"os_name": "GNU/Linux"`, otherwise, if `uname -o` doesn't work, then don't do
+anything here.  This kind of idiom allows us to script portably, but to also
 throw in GNU-ish nice-to-haves when and where we decide it's appropriate.
 
 More advanced examples are available in the `bin/` directory.
@@ -252,7 +252,7 @@ worse, practical applications.  Perhaps you've got some small monitoring script
 that you want to output in json format, but firing up a `python` instance is
 really overkill.  Who knows?
 
-### [insert different face here] But... but... my 'real' language!
+### [insert different face here] But... but... my 'real' language
 
 Yeah, I get it.  You might like to take a look at the very promising [oil shell.](http://www.oilshell.org/)
 
@@ -265,7 +265,7 @@ Then give it your time and attention.  If you want to.
 
 [I've got so much respect for you](https://www.youtube.com/watch?v=sl8uPLRN4kw)
 
-### Why would you want to deal with json in shell at all?  That's nuts!
+### Why would you want to deal with json in shell at all?  That's nuts
 
 I agree, it is a bit nuts.  Mostly for interactive use where throwing glue into
 streams is fine.  But for shell scripting itself, you really want as much
@@ -282,7 +282,7 @@ of which is the parsing `ls` trap.
 Many newbie shell scripters will try to write code where they pluck details out
 of `ls`, usually with some inefficient code like:
 
-```
+```bash
 PERMISSIONS=`ls -la $FILE | cut -d ' ' -f1`
 OWNER=`ls -la $FILE | cut -d ' ' -f3`
 GROUP=`ls -la $FILE | cut -d ' ' -f4`
@@ -292,20 +292,20 @@ FILENAME=`ls -la $FILE | cut -d ' ' -f9-`
 There's a number of problems here.
 
 * UPPERCASE variables.  For Kildall's sake, just stop it.
-    - Shell doesn't have strict scoping/namespacing
-    - That said, UPPERCASE is, *de facto via convention*, the "global" scope
-    - In other languages, clobbering the global scope is _strongly_ discouraged
-    - We should adopt good habits/practices from other languages where possible
-    - Ergo:  **Don't use UPPERCASE unless you know why you need to**
-    - _There are, annoyingly, exceptions to the rule.  Like `$http_proxy`_
+  * Shell doesn't have strict scoping/namespacing
+  * That said, UPPERCASE is, *de facto via convention*, the "global" scope
+  * In other languages, clobbering the global scope is _strongly_ discouraged
+  * We should adopt good habits/practices from other languages where possible
+  * Ergo:  **Don't use UPPERCASE unless you know why you need to**
+  * _There are, annoyingly, exceptions to the rule.  Like `$http_proxy`_
 * Backtick command substitution.  I'm damn near 40.  This crap was superseded
   by `$()` when I was soiling nappies.  Just stop it.
-    - Unless you're writing SVR4 `sh` package scripts for Solaris packages.  Ugh.
+  * Unless you're writing SVR4 `sh` package scripts for Solaris packages.  Ugh.
 * Unquoted variables.  `shellcheck` is going to have kittens!
 * Multiple avoidable calls to an external program
 * Because date/timestamps might be different, there's no guarantee that the
-  filename will be at the suggested field.  I've seen an attempt at working 
-  around this with a double invocation of `rev` e.g. 
+  filename will be at the suggested field.  I've seen an attempt at working
+  around this with a double invocation of `rev` e.g.
   `ls -la $FILE | rev | cut -d '' -f1 | rev`
   ...or something similarly nonsensical
 * Then you've got whitespace-in-filename challenges
@@ -315,7 +315,7 @@ There's a number of problems here.
 
 A slightly saner approach to this example might look something more like
 
-```
+```bash
 while read -r; do
   set -- "${REPLY}"
   fsobj_mode="${1}"
@@ -330,7 +330,7 @@ Of course this is still prone to errors like date/timestamp vs locale issues.
 
 In a json structure, these problems go away somewhat e.g:
 
-```
+```bash
 ▓▒░$ bash json_ls | jq -r '.[env.PWD][] | select(.fileName=="json_uname")'
 {
   "fileName": "json_uname",
@@ -354,12 +354,12 @@ Why *wouldn't* you want that kind of improvement for shell scripting?
 
 Sure.  So what you're getting at is edge cases like "newlines in a filename".
 
-`jsonprint.sh` provides a function, `json_str_escape()` which handles this.
-It is currently not plumbed in to any other function and only works when 
-manually called.  The example script, `json_ls`, uses this function, and it's 
+`jsonprint.sh` provides a function, `json_escape_str()` which handles this.
+It is currently not plumbed in to any other function and only works when
+manually called.  The example script, `json_ls`, uses this function, and it's
 _mostly_ there:
 
-```
+```bash
 ▓▒░$ touch "$(printf "foo\n-rw-r--r-- 1 skeeto skeeto 0 Feb  6 15:49 bar")"
 ▓▒░$ ls -la
 total 44
@@ -367,8 +367,10 @@ drwxr-x--- 2 rawiri rawiri  258 Mar  2 22:58  ./
 drwxr-x--- 5 rawiri rawiri   72 Feb 29 14:50  ../
 -rw-r----- 1 rawiri rawiri    0 Mar  2 22:58 'foo'$'\n''-rw-r--r-- 1 skeeto skeeto 0 Feb  6 15:49 bar'
 ```
+
 ...
-```
+
+```bash
 ▓▒░$ bash json_ls | jq -r '.'
 {
   "/home/rawiri/git/jsonprint/bin": [
@@ -397,7 +399,7 @@ their positional parameters, and we don't depend on `getopt` or `getopts`.
 
 While I _could_ implement something like e.g.
 
-```
+```bash
 json_str -k lots of words here -v somevalue
 ```
 
@@ -406,20 +408,20 @@ That would be more complicated than it needs to be.
 Until something more elegant becomes obvious, for the moment, you can use
 something like this:
 
-```
+```bash
 json_num "\"${key}\"" "${value}"
 ```
 
 This will deliver `${key}` with literal double-quotes, which are stripped by the
 functions.  E.g this line from `vmstat -s`:
 
-```
+```bash
 15375000 K total memory
 ```
 
 Via a little juggling and then fed into `json_num()` as above, becomes this:
 
-```
+```bash
 "K total memory": 15375000,
 ```
 
@@ -428,7 +430,7 @@ Or you can sanitise your key names - swap spaces for underscores for example.
 If you _don't_ put in those literal double quotes, the function will essentially
 work like:
 
-```
+```bash
 json_num K total memory 15375000
 
 $1=K
@@ -447,74 +449,74 @@ the sake of demonstration, we'll use four lines of input.
 
 If you ran this blindly through a formatting function, this might come out like:
 
-```
+```bash
 {"a": "b", "c": "d", "e": "f", "g": "h",}
 ```
 
 The issue is very subtle - there is a trailing comma on the last pair.  That's
 going to break things.
 
-To get around this, I've naturally tried out a number of approaches.  Perhaps 
+To get around this, I've naturally tried out a number of approaches.  Perhaps
 the simplest is to use one of the append functions and a single-use variable to
 track how many times you've gone through a loop.  For example
 
-```
+```bash
 loop_iter=0
-json_obj_open
+json_open_obj
   while read -r _key _value; do
     if (( loop_iter == 0 )); then
       json_str "${_key}" "${_value}"
       (( loop_iter++ ))
     else
-      json_str_append "${_key}" "${_value}"
+      json_append_str "${_key}" "${_value}"
     fi
   done < <(some_input)
-json_obj_close
+json_close_obj
 ```
 
-If we step through this, we open an object with `json_obj_open()`, which produces:
+If we step through this, we open an object with `json_open_obj()`, which produces:
 
-```
+```bash
 {
 ```
 
 Next, we read into `_key` and `_value`, then test whether `loop_iter` is 0.  
 If it's 0, then we're on our very first run through the loop, and so we need to
 use `json_str()` (because the value `b` is a string, duh).  This, combined with
-`json_obj_open()` gives us:
+`json_open_obj()` gives us:
 
-```
+```bash
 {"a": "b"
 ```
 
 Then we iterate `loop_iter` up by one, making it equal to `1`.
 
 If that's the only keypair to be generated, then the loop finishes, there's no
-trailing comma, and all is well.  `json_obj_close()` is called, and we get:
+trailing comma, and all is well.  `json_close_obj()` is called, and we get:
 
-```
+```bash
 {"a": "b"}
 ```
 
-If there's more keypairs to be generated, because `loop_iter` is now `1`, we 
-switch over to `json_str_append()`.  So the next line of input would be 
+If there's more keypairs to be generated, because `loop_iter` is now `1`, we
+switch over to `json_append_str()`.  So the next line of input would be
 generated like (note the preceding comma and space):
 
-```
+```bash
 , "c": "d"
 ```
 
 Meaning a stacked output of:
 
-```
+```bash
 {"a": "b", "c": "d"
 ```
 
-There is no trailing comma, so it can be safely closed at any point.  And as we 
+There is no trailing comma, so it can be safely closed at any point.  And as we
 loop through the input, we simply stack our key value pairs this way.
 After a full run through, we have:
 
-```
+```bash
 {"a": "b", "c": "d", "e": "f", "g": "h"}
 ```
 
@@ -524,10 +526,10 @@ handle this (yet?)
 ### I'm looking at the code, why aren't you using local variables?
 
 Not all shells support the `local` keyword/scope.  So as a convention, I use
-underscore prepended variables and explicitly `unset` them at the end of 
+underscore prepended variables and explicitly `unset` them at the end of
 each function.  Or I should be doing that.
 
-This means that the library itself is more readily portable, and if it's not 
+This means that the library itself is more readily portable, and if it's not
 immediately portable to a certain bourne-family shell, then it shouldn't be much
 effort to update it.
 
@@ -543,19 +545,19 @@ ahead and use that capability - and you probably should.
 All functions start with `json_`, even when this may seem weird.  I might change
 that standard in the future to something like `jprint_` or `printj_`.  Or not.
 
-Because I know that some people prefer certain orders of things, I have put in
-aliases for many of these functions e.g.
+I originally provided both `json_[thing]_append` style and `json_append_[thing]`
+functions.  This wass the case for all `_open`, `_close` and `_append` functions.
 
-`json_obj_append()` has an alias, `json_append_obj`
+This meant a lot of duplicated code and related maintenance overheads.
 
-This is the case for all `_open`, `_close` and `_append` functions.
+I've elected to use the `json_[open|close|append]_[thing]` format.
 
-### json_vorhees()
+### json_die()
 
 This function prints an exception message to stderr and immediately exits.
 It is our variant of `die()`.
 
-It has two aliases for the humourless:  `json_die` and `json_exception`.
+It has an equivalent counterpart: `json_exception`.
 
 ### json_open()
 
@@ -587,7 +589,7 @@ can use `json_require()` to check the existence of these.
 
 Failure will emit a message like:
 
-```
+```bash
 { "Warning": "the_thing not found or not readable" }
 ```
 
@@ -626,66 +628,66 @@ Everything else is classed as a string.
 The purpose of this function is to allow you to determine which output function
 to select, for example:
 
-```
+```bash
 case $(json_gettype "${_value}") in
-  (int|float) json_num_append "${_key}" "${_value}" ;;
-  (bool)      json_bool_append "${_key}" "${_value}" ;;
-  (string)    json_str_append "${_key}" "${_value}" ;;
+  (int|float) json_append_num "${_key}" "${_value}" ;;
+  (bool)      json_append_bool "${_key}" "${_value}" ;;
+  (string)    json_append_str "${_key}" "${_value}" ;;
 esac
 ```
 
-See, also, `json_auto()` and `json_auto_append()`
+See, also, `json_auto()` and `json_append_auto()`
 
-### json_arr_open()
+### json_open_arr()
 
 **Args:** (Optional).  One string.
 
-**Example:** `json_arr_open jboss_server_stats`
+**Example:** `json_open_arr jboss_server_stats`
 
 This function opens an array block and accepts an optional arg.
 
 If no argument is supplied, it simply outputs:
 
-```
+```bash
 [
 ```
 
 If an argument is supplied, it outputs:
 
-```
+```bash
 "arg": [
 ```
 
-### json_arr_close()
+### json_close_arr()
 
 **Options:** `-c` or `--comma`.  When selected, this emits a trailing comma.
 
-The opposite of `json_arr_open()`.  It prints: `]`.
+The opposite of `json_open_arr()`.  It prints: `]`.
 
 If used with `-c` or `--comma`, it prints `],`.  This is the opposite approach
 to the `_append` functions.
 
-### json_arr_append()
+### json_append_arr()
 
 **Args:** (Optional).  One string.
 
 **Options**: `-n` or `--no-bracket`.
               When selected, this omits the leading bracket.
 
-**Example:** `json_arr_append jboss_application_stats`
+**Example:** `json_append_arr jboss_application_stats`
 
 This function appends an array to another array.  It emits the closing block for
 the previous array, the comma seperator, and then opens the new array.
 
 If no argument is supplied, it simply outputs:
 
-```
+```bash
 ],[
 ```
 
 If an argument is supplied, it outputs:
 
-```
+```bash
 ], "arg": [
 ```
 
@@ -698,56 +700,56 @@ or
 
 `, "arg": [`
 
-### json_obj_open()
+### json_open_obj()
 
 **Args:** (Optional).  One string.
 
-**Example:** `json_obj_open jboss_queue_stats`
+**Example:** `json_open_obj jboss_queue_stats`
 
 This function opens an array block and accepts an optional arg.
 
 If no argument is supplied, it simply outputs:
 
-```
+```bash
 {
 ```
 
 If an argument is supplied, it outputs:
 
-```
+```bash
 "arg": {
 ```
 
-### json_obj_close()
+### json_close_obj()
 
 **Options:** `-c` or `--comma`.  When selected, this emits a trailing comma.
 
-The opposite of `json_obj_open()`.  It prints: `}`.
+The opposite of `json_open_obj()`.  It prints: `}`.
 
 If used with `-c` or `--comma`, it prints `},`.  This is the opposite approach
 to the `_append` functions.
 
-### json_obj_append()
+### json_append_obj()
 
 **Args:** (Optional).  One string.
 
 **Options**: `-n` or `--no-bracket`.
               When selected, this omits the leading bracket.
 
-**Example:** `json_obj_append jboss_memory_stats`
+**Example:** `json_append_obj jboss_memory_stats`
 
 This function appends an object to another object.  It emits the closing block
 for the previous object, the comma seperator, and then opens the new object.
 
 If no argument is supplied, it simply outputs:
 
-```
+```bash
 },{
 ```
 
 If an argument is supplied, it outputs:
 
-```
+```bash
 }, "arg": {
 ```
 
@@ -760,14 +762,14 @@ or
 
 `, "arg": {`
 
-### json_str_escape()
+### json_escape_str()
 
 **Args:** (None).  This functions reads stdin from a pipe.
 
-**Example:** `somecommand | json_str_escape`
+**Example:** `somecommand | json_escape_str`
 
 Some characters in json must be escaped.  A lot of advice at the better end of
-a google will center around using `perl` or `python` to do this.  If we assume 
+a google will center around using `perl` or `python` to do this.  If we assume
 that, then we may as well just use `perl` or `python` for everything else.
 Right?!
 
@@ -779,7 +781,7 @@ not undertaken any performance testing, so OTOH it may well be reasonable.  YMMV
 
 ### json_str()
 
-**Args:** (Required).  Two args: Key and Value.  If the value is blank or 
+**Args:** (Required).  Two args: Key and Value.  If the value is blank or
 literally 'null', we return `null` (unquoted)
 
 **Options:** `-c` or `--comma`.  When selected, this emits a trailing comma.
@@ -792,7 +794,7 @@ String values are quoted.
 If used with `-c` or `--comma`, it prints `"key": "value",`.
 This is the opposite approach to the `_append` functions.
 
-### json_str_append()
+### json_append_str()
 
 As per `json_str()`, it just drops the `-c`/`--comma` options, and pre-pends a
 comma i.e. `, "key": "value"`.  It otherwise behaves exactly the same.
@@ -805,21 +807,21 @@ comma i.e. `, "key": "value"`.  It otherwise behaves exactly the same.
 
 **Example:** `json_num Memory "${memory_value}"`
 
-This function formats a number (int or float) key value pair, in the format: 
+This function formats a number (int or float) key value pair, in the format:
 `"key": value`.  Numerical values are unquoted.
 
 The value is validated to ensure that it is an integer or float, if it isn't,
-an exception will be thrown and the script will exit via `json_vorhees()`.
+an exception will be thrown and the script will exit via `json_die()`.
 
 Leading zeroes are not allowed in json as they can be interpreted as octal, so
 this function strips them as well.  In order to handle this and floats, we use
-`printf`'s float format rather than the signed decimal format specified in the 
+`printf`'s float format rather than the signed decimal format specified in the
 json spec.
 
 If used with `-c` or `--comma`, it prints `"key": value,`.
 This is the opposite approach to the `_append` functions.
 
-### json_num_append()
+### json_append_num()
 
 As per `json_num()`, it just drops the `-c`/`--comma` options, and pre-pends a
 comma i.e. `, "key": value`.  It otherwise behaves exactly the same.
@@ -832,12 +834,12 @@ comma i.e. `, "key": value`.  It otherwise behaves exactly the same.
 
 **Example:** `json_bool interfaceActive True`
 
-This function formats a boolean true/false key value pair, in the format: 
+This function formats a boolean true/false key value pair, in the format:
 `"key": value`.  Boolean values are unquoted.
 
 The value is validated to ensure that it is one of a recognised set of options.
 If it isn't, an exception will be thrown and the script will exit
-via `json_vorhees()`.
+via `json_die()`.
 
 The list is as follows:
 
@@ -854,7 +856,7 @@ respective `true` or `false` forms in lowercase.
 If used with `-c` or `--comma`, it prints `"key": value,`.
 This is the opposite approach to the `_append` functions.
 
-### json_bool_append()
+### json_append_bool()
 
 As per `json_bool()`, it just drops the `-c`/`--comma` options, and pre-pends a
 comma i.e. `, "key": value`.  It otherwise behaves exactly the same.
@@ -869,11 +871,11 @@ This function attempts to use `json_gettype()` to automatically determine how
 to address the value that is given to it.  It is currently untested, but in
 theory it should work just fine.
 
-### json_auto_append
+### json_append_auto
 
 **Args:** (Required).  Two args: Key and Value.
 
-**Example:** `json_auto_append interface eth0`
+**Example:** `json_append_auto interface eth0`
 
 This function attempts to use `json_gettype()` to automatically determine how
 to address the value that is given to it.  It is currently untested, but in
@@ -881,19 +883,19 @@ theory it should work just fine.
 
 ### json_from_dkvp()
 
-**NOTE: Work In Progress.  Do Not Use**
+NOTE: Work In Progress.  Do Not Use
 
 This function takes a comma or equals delimited key-value pair input and emits
 it in a way that can be used by e.g. `json_str()`
 
 **Example:** a variable named `line` that contains `Bytes: 22`
 
-```
+```bash
 json_num $(json_from_dkvp "${line}"
 "Bytes": 22
 ```
 
-The intent with this function is to loop through a series of 
+The intent with this function is to loop through a series of
 delimited key value pairs (i.e. dkvp) and to restructure them slightly
 into a json-friendly visage.
 
@@ -901,12 +903,12 @@ into a json-friendly visage.
 
 **Args:** (Required).  Any number of key value pairs all in one line.
 
-**Options:** `-n` or `--name`.  When selected, this gives the surrounding 
+**Options:** `-n` or `--name`.  When selected, this gives the surrounding
              object a name.
 
 **Example:** `json_foreach key1 value1 key2 value2 .. keyN valueN`
 
-This function takes any number of parameters and blindly structures every pair 
+This function takes any number of parameters and blindly structures every pair
 in the sequence into json keypairs, within an optionally named object structure.
 
 If the option `-n` or `--name` is used, the object is given a name e.g.
@@ -943,32 +945,32 @@ a sequence of positional parameters...
 ### json_timestamp()
 
 This function is intended for situations where timestamping an object may be
-required or useful.  For example: you're presenting metrics that require some 
+required or useful.  For example: you're presenting metrics that require some
 kind of timestamp, usually this would be for tracked series data and similar.
 Or you're outputting data that needs a timestamp to compare to - a file mtime
 (in epoch format) vs the current epoch, for example.
 
 This is a way of expressing "these are the facts _as at_ time index xyz"
 
-It calls `json_obj_append() --no-brackets`, so it _must_ be run after a close
-function like `json_obj_close` or `json_arr_close`.  It then outputs its
-information, and then calls `json_obj_close()`.
+It calls `json_append_obj() --no-brackets`, so it _must_ be run after a close
+function like `json_close_obj` or `json_close_arr`.  It then outputs its
+information, and then calls `json_close_obj()`.
 
 It outputs either of the following formats:
 
-```
+```bash
 , "timestamp": {"utc_epoch": 1583137512}
 ```
 
 Or, for systems that don't support `date +%s`:
 
-```
+```bash
 , "timestamp": {"utc_YYYYMMDDHHMMSS": 20200302100832}
 ```
 
 In real life usage, it looks like this:
 
-```
+```bash
 ▓▒░$ bash json_loadavg | jq -r '.'
 {
   "load_average": {
